@@ -83,7 +83,19 @@ const HelpButton: React.FC<HelpButtonProps> = ({ currentView = 'dashboard' }) =>
                 return;
             }
             
-            const { GoogleGenAI } = await import('@google/genai');
+            // Dynamic import to prevent app crash if module fails to load at startup
+            let GoogleGenAI;
+            try {
+                // @ts-ignore
+                const module = await import('@google/genai');
+                GoogleGenAI = module.GoogleGenAI;
+            } catch (err) {
+                console.error("Failed to load GoogleGenAI module:", err);
+                setHelpContent("<p>Help system is currently unavailable. Please check your connection.</p>");
+                setIsLoading(false);
+                return;
+            }
+
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
             const prompt = `
             Generate a user-friendly guide for our "Griot Operations Management" app.
@@ -98,8 +110,10 @@ const HelpButton: React.FC<HelpButtonProps> = ({ currentView = 'dashboard' }) =>
             });
 
             const content = response.text;
-            setHelpContent(content);
-            localStorage.setItem(storageKey, content);
+            const finalContent = content || "<p>No help content generated.</p>";
+            
+            setHelpContent(finalContent);
+            localStorage.setItem(storageKey, finalContent);
         } catch (error) {
             console.error("Error fetching help content:", error);
             setHelpContent("<p>Could not load help content at this time. Please try again later.</p>");
