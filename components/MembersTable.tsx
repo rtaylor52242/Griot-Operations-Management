@@ -7,6 +7,7 @@ import { SearchIcon } from './icons';
 interface MembersTableProps {
     members: Member[];
     tiers: MembershipTier[];
+    onEdit: (member: Member) => void;
 }
 
 const statusColors: { [key in MemberStatus]: string } = {
@@ -16,7 +17,7 @@ const statusColors: { [key in MemberStatus]: string } = {
     [MemberStatus.Cancelled]: 'bg-red-100 text-red-800',
 };
 
-const MembersTable: React.FC<MembersTableProps> = ({ members, tiers }) => {
+const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit }) => {
     const [searchTerm, setSearchTerm] = useState('');
     
     const tierMap = useMemo(() => {
@@ -44,7 +45,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers }) => {
                         placeholder="Search members by name or email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
                     />
                 </div>
             </div>
@@ -73,7 +74,12 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers }) => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(member.joinDate).toLocaleDateString()}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="#" className="text-brand-primary hover:text-brand-secondary">View</a>
+                                    <button 
+                                        onClick={() => onEdit(member)}
+                                        className="text-brand-primary hover:text-brand-secondary focus:outline-none"
+                                    >
+                                        View / Edit
+                                    </button>
                                 </td>
                             </tr>
                         ))}

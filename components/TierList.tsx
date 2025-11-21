@@ -5,9 +5,10 @@ import { CheckCircleIcon } from './icons';
 
 interface TierListProps {
     tiers: MembershipTier[];
+    onEdit: (tier: MembershipTier) => void;
 }
 
-const TierList: React.FC<TierListProps> = ({ tiers }) => {
+const TierList: React.FC<TierListProps> = ({ tiers, onEdit }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
             {tiers.map((tier) => (
@@ -32,7 +33,10 @@ const TierList: React.FC<TierListProps> = ({ tiers }) => {
                         ))}
                     </ul>
 
-                    <button className="w-full mt-auto px-4 py-2 text-sm font-medium text-brand-primary bg-indigo-100 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors">
+                    <button 
+                        onClick={() => onEdit(tier)}
+                        className="w-full mt-auto px-4 py-2 text-sm font-medium text-brand-primary bg-indigo-100 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors"
+                    >
                         Edit Tier
                     </button>
                 </div>
