@@ -7,7 +7,7 @@ interface ReportViewProps {
     onBack: () => void;
 }
 
-type ChartType = 'Bar' | 'Line' | 'Area' | 'Bubble' | 'Heatmap';
+type ChartType = 'Bar' | 'Line' | 'Area' | 'Bubble' | 'Heatmap' | 'Pie';
 
 const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
     const [chartType, setChartType] = useState<ChartType>('Bar');
@@ -143,7 +143,28 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
 
     const { columns, data } = getReportData(title);
 
-    // Logic to parse data for charts
+    const getDefaultValueIndex = () => {
+        switch(title) {
+            case 'Daily Sales Summary': return 4; 
+            case 'Revenue by Category': return 1;
+            case 'Monthly Financial Statement': return 1; 
+            case 'Donation Analysis': return 2;
+            case 'New Member Signups': return 4;
+            case 'Renewal Rates': return 4;
+            case 'Member Attendance': return 4;
+            case 'Churn Analysis': return 4;
+            case 'Daily Visitor Count': return 4;
+            case 'Event Capacity Utilization': return 4;
+            case 'Ticket Type Breakdown': return 2;
+            case 'Peak Hours': return 1; 
+            default: return 1;
+        }
+    };
+
+    const [valueIndex, setValueIndex] = useState<number>(getDefaultValueIndex());
+    const [showLabels, setShowLabels] = useState<boolean>(false);
+    const [is3D, setIs3D] = useState<boolean>(false);
+
     const parseValue = (val: string): number => {
         if (!val) return 0;
         const cleanVal = val.replace(/[^0-9.-]/g, ''); 
@@ -151,26 +172,11 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
         return isNaN(num) ? 0 : num;
     };
 
-    // Determine which column contains the main value for the chart
-    let valueIndex = 1;
-    switch(title) {
-        case 'Daily Sales Summary': valueIndex = 4; break; 
-        case 'Revenue by Category': valueIndex = 1; break;
-        case 'Monthly Financial Statement': valueIndex = 1; break; 
-        case 'Donation Analysis': valueIndex = 2; break;
-        case 'New Member Signups': valueIndex = 4; break;
-        case 'Renewal Rates': valueIndex = 4; break;
-        case 'Member Attendance': valueIndex = 4; break;
-        case 'Churn Analysis': valueIndex = 4; break;
-        case 'Daily Visitor Count': valueIndex = 4; break;
-        case 'Event Capacity Utilization': valueIndex = 4; break;
-        case 'Ticket Type Breakdown': valueIndex = 2; break;
-        case 'Peak Hours': valueIndex = 1; break; 
-        default: valueIndex = 1;
-    }
+    const numericColumnOptions = columns.map((col, index) => {
+        if (index === 0) return null;
+        return { label: col, index };
+    }).filter((item): item is {label: string, index: number} => item !== null);
 
-    // Reports that are time-based usually come Latest -> Oldest in tables, 
-    // but should be Oldest -> Latest in charts.
     const timeSeriesReports = [
         'Daily Sales Summary',
         'Monthly Financial Statement',
@@ -185,17 +191,32 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
         chartRows.reverse();
     }
 
-    // Prepare Chart Data
-    const chartLabels = chartRows.map(row => row[0]); // Assuming first column is label
+    const chartLabels = chartRows.map(row => row[0]);
     const chartValuesRaw = chartRows.map(row => row[valueIndex]);
     const chartValues = chartValuesRaw.map(parseValue);
     
     const maxVal = Math.max(...chartValues, 1);
     
-    const getX = (i: number, length: number) => {
+    const colors = [
+        '#4f46e5', '#7c3aed', '#db2777', '#ea580c', '#059669', '#0891b2', '#2563eb', '#9333ea'
+    ];
+
+    // Safe zone settings for SVG charts
+    const safePaddingTop = 15;
+    const safePaddingBottom = 10;
+    const safePaddingX = 5;
+    
+    const getSafeX = (i: number, length: number) => {
         if (length <= 1) return 50;
-        return i * (100 / (length - 1));
-    }
+        const usableWidth = 100 - (safePaddingX * 2);
+        return safePaddingX + (i * (usableWidth / (length - 1)));
+    };
+
+    const getSafeY = (val: number, max: number) => {
+        const usableHeight = 100 - (safePaddingTop + safePaddingBottom);
+        if (max === 0) return 100 - safePaddingBottom;
+        return (100 - safePaddingBottom) - ((val / max) * usableHeight);
+    };
 
     const renderChart = () => {
         if (chartValues.length === 0) return <div className="h-64 flex items-center justify-center text-gray-500">No data to chart</div>;
@@ -203,13 +224,21 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
         switch(chartType) {
             case 'Bar':
                 return (
-                    <div className="h-64 flex items-end justify-around p-4 pb-0 bg-gray-50 rounded border border-gray-200">
+                    <div className="h-64 flex items-end justify-around px-4 pb-0 pt-12 bg-gray-50 rounded border border-gray-200 relative">
                         {chartValues.map((val, i) => {
                              const h = (val / maxVal) * 100;
                              return (
-                                 <div key={i} className="w-full mx-1 max-w-[60px] bg-brand-primary bg-opacity-80 hover:bg-opacity-100 rounded-t transition-all relative group" style={{ height: `${Math.max(h, 2)}%` }}>
-                                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                        {chartLabels[i]}: {chartValuesRaw[i]}
+                                 <div 
+                                    key={i} 
+                                    className={`w-full mx-1 max-w-[60px] rounded-t transition-all relative group ${is3D ? 'shadow-[4px_4px_5px_rgba(0,0,0,0.3)]' : ''}`}
+                                    style={{ 
+                                        height: `${Math.max(h, 2)}%`,
+                                        background: is3D ? 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)' : '#4f46e5',
+                                        opacity: is3D ? 1 : 0.8,
+                                    }}
+                                 >
+                                    <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded transition-opacity whitespace-nowrap z-10 ${showLabels ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                        {showLabels ? chartValuesRaw[i] : `${chartLabels[i]}: ${chartValuesRaw[i]}`}
                                     </div>
                                  </div>
                              )
@@ -218,8 +247,8 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                 );
             case 'Line':
                 const points = chartValues.map((val, i) => {
-                    const x = getX(i, chartValues.length);
-                    const y = 100 - ((val / maxVal) * 100);
+                    const x = getSafeX(i, chartValues.length);
+                    const y = getSafeY(val, maxVal);
                     return `${x} ${y}`;
                 }).join(',');
                 
@@ -227,64 +256,124 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                     <div className="h-64 bg-gray-50 rounded border border-gray-200 p-4">
                         <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                              {/* Grid lines */}
-                             {[0, 25, 50, 75, 100].map(y => (
-                                 <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#e5e7eb" strokeWidth="0.5" />
-                             ))}
+                             {[0, 0.25, 0.5, 0.75, 1].map(ratio => {
+                                 const y = getSafeY(ratio * maxVal, maxVal);
+                                 return <line key={ratio} x1={safePaddingX} y1={y} x2={100-safePaddingX} y2={y} stroke="#e5e7eb" strokeWidth="0.5" />;
+                             })}
                              
-                             <polyline points={points} fill="none" stroke="#4f46e5" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                             <polyline 
+                                points={points} 
+                                fill="none" 
+                                stroke="#4f46e5" 
+                                strokeWidth="2" 
+                                vectorEffect="non-scaling-stroke" 
+                                style={{ filter: is3D ? 'drop-shadow(3px 5px 2px rgb(0 0 0 / 0.4))' : 'none' }}
+                             />
                              {chartValues.map((val, i) => {
-                                 const x = getX(i, chartValues.length);
-                                 const y = 100 - ((val / maxVal) * 100);
+                                 const x = getSafeX(i, chartValues.length);
+                                 const y = getSafeY(val, maxVal);
                                  return (
-                                     <circle key={i} cx={x} cy={y} r="1.5" fill="#4f46e5" className="hover:r-4 transition-all cursor-pointer">
-                                         <title>{chartLabels[i]}: {chartValuesRaw[i]}</title>
-                                     </circle>
+                                     <g key={i}>
+                                        <circle cx={x} cy={y} r={is3D ? 2 : 1.5} fill="#4f46e5" className="hover:r-4 transition-all cursor-pointer">
+                                            <title>{chartLabels[i]}: {chartValuesRaw[i]}</title>
+                                        </circle>
+                                        {showLabels && (
+                                            <text x={x} y={y - 5} textAnchor="middle" fontSize="4" fill="#374151" fontWeight="bold">
+                                                {chartValuesRaw[i]}
+                                            </text>
+                                        )}
+                                     </g>
                                  )
                              })}
                         </svg>
                     </div>
                 );
             case 'Area':
+                const areaBaseY = getSafeY(0, maxVal);
                 const areaPoints = chartValues.map((val, i) => {
-                    const x = getX(i, chartValues.length);
-                    const y = 100 - ((val / maxVal) * 100);
+                    const x = getSafeX(i, chartValues.length);
+                    const y = getSafeY(val, maxVal);
                     return `${x},${y}`;
                 }).join(' ');
                 
+                const firstX = getSafeX(0, chartValues.length);
+                const lastX = getSafeX(chartValues.length - 1, chartValues.length);
+
                 return (
                     <div className="h-64 bg-gray-50 rounded border border-gray-200 p-4">
                         <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points={`0,100 ${areaPoints} 100,100`} fill="#4f46e5" fillOpacity="0.2" stroke="none" />
+                            {is3D ? (
+                                <defs>
+                                    <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.8"/>
+                                        <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.1"/>
+                                    </linearGradient>
+                                </defs>
+                            ) : null}
+                            <polygon 
+                                points={`${firstX},${areaBaseY} ${areaPoints} ${lastX},${areaBaseY}`} 
+                                fill={is3D ? "url(#areaGradient)" : "#4f46e5"} 
+                                fillOpacity={is3D ? 1 : 0.2} 
+                                stroke="none" 
+                                style={{ filter: is3D ? 'drop-shadow(2px 4px 6px rgba(0,0,0,0.3))' : 'none' }}
+                            />
                             <polyline points={areaPoints} fill="none" stroke="#4f46e5" strokeWidth="2" vectorEffect="non-scaling-stroke" />
                              {chartValues.map((val, i) => {
-                                 const x = getX(i, chartValues.length);
-                                 const y = 100 - ((val / maxVal) * 100);
-                                 return <circle key={i} cx={x} cy={y} r="1.5" fill="#4f46e5"><title>{chartLabels[i]}: {chartValuesRaw[i]}</title></circle>
+                                 const x = getSafeX(i, chartValues.length);
+                                 const y = getSafeY(val, maxVal);
+                                 return (
+                                    <g key={i}>
+                                        <circle cx={x} cy={y} r="1.5" fill="#4f46e5">
+                                            <title>{chartLabels[i]}: {chartValuesRaw[i]}</title>
+                                        </circle>
+                                        {showLabels && (
+                                            <text x={x} y={y - 5} textAnchor="middle" fontSize="4" fill="#374151" fontWeight="bold">
+                                                {chartValuesRaw[i]}
+                                            </text>
+                                        )}
+                                    </g>
+                                 )
                              })}
                         </svg>
                     </div>
                 );
             case 'Bubble':
+                const centerY = 50;
                  return (
                     <div className="h-64 bg-gray-50 rounded border border-gray-200 p-4 relative">
                          <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                             <line x1="0" y1="50" x2="100" y2="50" stroke="#e5e7eb" strokeWidth="1" />
+                             <line x1={safePaddingX} y1={centerY} x2={100-safePaddingX} y2={centerY} stroke="#e5e7eb" strokeWidth="1" />
+                             {is3D && (
+                                 <defs>
+                                    <radialGradient id="bubbleGradient" cx="30%" cy="30%" r="70%">
+                                        <stop offset="0%" stopColor="#a5b4fc" />
+                                        <stop offset="100%" stopColor="#4f46e5" />
+                                    </radialGradient>
+                                 </defs>
+                             )}
                             {chartValues.map((val, i) => {
-                                const x = getX(i, chartValues.length);
+                                const x = getSafeX(i, chartValues.length);
                                 // Bubble size relative to value, capped at reasonable display size
                                 const r = Math.max(2, (val / maxVal) * 15);
                                 return (
-                                     <circle 
-                                        key={i} 
-                                        cx={x} 
-                                        cy={50} // Align on center line for simple bubble view 
-                                        r={r} 
-                                        fill="#4f46e5" 
-                                        fillOpacity="0.6"
-                                        className="hover:fill-opacity-80 transition-all cursor-pointer"
-                                    >
-                                        <title>{chartLabels[i]}: {chartValuesRaw[i]}</title>
-                                    </circle>
+                                    <g key={i}>
+                                        <circle 
+                                            cx={x} 
+                                            cy={centerY} 
+                                            r={r} 
+                                            fill={is3D ? "url(#bubbleGradient)" : "#4f46e5"} 
+                                            fillOpacity={is3D ? 1 : 0.6}
+                                            className="hover:fill-opacity-80 transition-all cursor-pointer"
+                                            style={{ filter: is3D ? 'drop-shadow(2px 2px 2px rgba(0,0,0,0.4))' : 'none' }}
+                                        >
+                                            <title>{chartLabels[i]}: {chartValuesRaw[i]}</title>
+                                        </circle>
+                                        {showLabels && (
+                                            <text x={x} y={centerY + r + 6} textAnchor="middle" fontSize="4" fill="#374151" fontWeight="bold">
+                                                {chartValuesRaw[i]}
+                                            </text>
+                                        )}
+                                    </g>
                                 )
                              })}
                         </svg>
@@ -292,25 +381,97 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                 );
             case 'Heatmap':
                 return (
-                    <div className="h-64 bg-gray-50 rounded border border-gray-200 p-4 flex flex-col justify-center">
+                    <div className="h-64 bg-gray-50 rounded border border-gray-200 px-4 pt-10 pb-2 flex flex-col justify-center">
                         <div className="grid grid-flow-col auto-cols-fr gap-1 h-16">
                             {chartValues.map((val, i) => {
                                 const intensity = val / maxVal;
                                 return (
                                     <div 
                                         key={i} 
-                                        className="rounded hover:opacity-75 transition-opacity relative group" 
-                                        style={{ backgroundColor: `rgba(79, 70, 229, ${Math.max(0.1, intensity)})` }}
+                                        className={`rounded hover:opacity-75 transition-opacity relative group ${is3D ? 'shadow-inner' : ''}`} 
+                                        style={{ 
+                                            backgroundColor: `rgba(79, 70, 229, ${Math.max(0.1, intensity)})`,
+                                            transform: is3D ? 'scale(0.95)' : 'scale(1)',
+                                            boxShadow: is3D ? '2px 2px 5px rgba(0,0,0,0.1)' : 'none'
+                                        }}
                                     >
-                                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                            {chartLabels[i]}: {chartValuesRaw[i]}
+                                        <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded transition-opacity whitespace-nowrap z-10 ${showLabels ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                            {showLabels ? chartValuesRaw[i] : `${chartLabels[i]}: ${chartValuesRaw[i]}`}
                                         </div>
                                     </div>
                                 )
                             })}
                         </div>
                          <div className="text-center text-sm text-gray-400 mt-4">
-                            Intensity based on relative value
+                            Intensity based on relative value of {columns[valueIndex]}
+                        </div>
+                    </div>
+                );
+            case 'Pie':
+                const total = chartValues.reduce((sum, val) => sum + val, 0);
+                let cumulativePercent = 0;
+
+                const getSlicePath = (startPercent: number, endPercent: number) => {
+                    const startX = Math.cos(2 * Math.PI * startPercent - Math.PI / 2);
+                    const startY = Math.sin(2 * Math.PI * startPercent - Math.PI / 2);
+                    const endX = Math.cos(2 * Math.PI * endPercent - Math.PI / 2);
+                    const endY = Math.sin(2 * Math.PI * endPercent - Math.PI / 2);
+                    const largeArcFlag = endPercent - startPercent > 0.5 ? 1 : 0;
+                    return `M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+                };
+
+                return (
+                    <div className="h-64 bg-gray-50 rounded border border-gray-200 p-4 flex items-center justify-center">
+                        <div style={{ 
+                            width: '200px', 
+                            height: '200px', 
+                            transform: is3D ? 'rotateX(60deg) rotateZ(-45deg)' : 'none',
+                            transformStyle: 'preserve-3d',
+                            transition: 'transform 0.5s ease'
+                        }}>
+                            <svg viewBox="-1.2 -1.2 2.4 2.4" style={{ overflow: 'visible', filter: is3D ? 'drop-shadow(0px 10px 5px rgba(0,0,0,0.3))' : 'none' }}>
+                                {chartValues.map((val, i) => {
+                                    const percent = val / total;
+                                    const startPercent = cumulativePercent;
+                                    const endPercent = cumulativePercent + percent;
+                                    cumulativePercent += percent;
+                                    
+                                    // Determine label position (midpoint of slice)
+                                    const midPercent = startPercent + percent / 2;
+                                    const labelX = Math.cos(2 * Math.PI * midPercent - Math.PI / 2) * 0.7;
+                                    const labelY = Math.sin(2 * Math.PI * midPercent - Math.PI / 2) * 0.7;
+
+                                    const color = colors[i % colors.length];
+
+                                    return (
+                                        <g key={i} className="group">
+                                            <path 
+                                                d={getSlicePath(startPercent, endPercent)} 
+                                                fill={color} 
+                                                stroke="white" 
+                                                strokeWidth={is3D ? "0.02" : "0.01"}
+                                                className="hover:opacity-90 transition-all cursor-pointer origin-center hover:scale-105"
+                                            >
+                                                 <title>{chartLabels[i]}: {chartValuesRaw[i]} ({(percent * 100).toFixed(1)}%)</title>
+                                            </path>
+                                             {showLabels && (
+                                                <text 
+                                                    x={labelX} 
+                                                    y={labelY} 
+                                                    textAnchor="middle" 
+                                                    dominantBaseline="middle" 
+                                                    fontSize="0.12" 
+                                                    fill="white" 
+                                                    fontWeight="bold"
+                                                    style={{ pointerEvents: 'none' }}
+                                                >
+                                                    {chartValuesRaw[i]}
+                                                </text>
+                                            )}
+                                        </g>
+                                    );
+                                })}
+                            </svg>
                         </div>
                     </div>
                 );
@@ -354,32 +515,93 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                     <h3 className="text-lg font-medium text-gray-700 mb-2 sm:mb-0">
                         Visualization: {columns[valueIndex]}
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                        {(['Bar', 'Line', 'Area', 'Bubble', 'Heatmap'] as ChartType[]).map(type => (
-                            <button
-                                key={type}
-                                onClick={() => setChartType(type)}
-                                className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
-                                    chartType === type 
-                                        ? 'bg-brand-primary text-white border-brand-primary' 
-                                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                                }`}
-                            >
-                                {type}
-                            </button>
-                        ))}
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex bg-gray-100 p-1 rounded mr-2">
+                             {(['Bar', 'Line', 'Area', 'Bubble', 'Heatmap', 'Pie'] as ChartType[]).map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setChartType(type)}
+                                    className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                        chartType === type 
+                                            ? 'bg-white text-brand-primary shadow-sm' 
+                                            : 'text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
                 
+                <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
+                    <div className="flex items-center">
+                        <span className="mr-2 text-gray-600">Data Metric:</span>
+                        <select 
+                            value={valueIndex}
+                            onChange={(e) => setValueIndex(Number(e.target.value))}
+                            className="border border-gray-300 rounded px-2 py-1 focus:ring-brand-primary focus:border-brand-primary bg-white text-black cursor-pointer outline-none"
+                        >
+                            {numericColumnOptions.map(opt => (
+                                <option key={opt.index} value={opt.index}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <label className="flex items-center cursor-pointer select-none">
+                        <input 
+                            type="checkbox" 
+                            checked={showLabels} 
+                            onChange={(e) => setShowLabels(e.target.checked)}
+                            className="form-checkbox h-4 w-4 text-brand-primary rounded border-gray-300 focus:ring-brand-primary"
+                        />
+                        <span className="ml-2 text-gray-600">Show Value Labels</span>
+                    </label>
+
+                    <label className="flex items-center cursor-pointer select-none">
+                        <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input 
+                                type="checkbox" 
+                                name="toggle" 
+                                id="toggle" 
+                                className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                                checked={is3D}
+                                onChange={(e) => setIs3D(e.target.checked)}
+                                style={{ 
+                                    right: is3D ? '0' : 'auto', 
+                                    left: is3D ? 'auto' : '0',
+                                    borderColor: is3D ? '#4f46e5' : '#d1d5db'
+                                }}
+                            />
+                            <label 
+                                htmlFor="toggle" 
+                                className={`toggle-label block overflow-hidden h-5 rounded-full cursor-pointer ${is3D ? 'bg-brand-primary' : 'bg-gray-300'}`}
+                            ></label>
+                        </div>
+                        <span className="text-gray-600">3D Mode</span>
+                    </label>
+                </div>
+
                 {renderChart()}
                 
-                {/* X-Axis Labels for Non-Heatmap */}
-                {chartType !== 'Heatmap' && (
+                {/* X-Axis Labels for Non-Heatmap/Pie */}
+                {chartType !== 'Heatmap' && chartType !== 'Pie' && (
                     <div className="flex justify-around mt-2 px-4 text-xs text-gray-500 overflow-hidden">
                         {chartLabels.map((l, i) => (
                             <span key={i} className="truncate text-center w-full px-1" title={l}>{l}</span>
                         ))}
                     </div>
+                )}
+                {/* Legend for Pie */}
+                {chartType === 'Pie' && (
+                     <div className="flex flex-wrap justify-center mt-4 gap-4">
+                         {chartLabels.map((l, i) => (
+                             <div key={i} className="flex items-center text-xs">
+                                 <span className="w-3 h-3 rounded-full mr-1" style={{ backgroundColor: colors[i % colors.length] }}></span>
+                                 <span className="text-gray-600">{l}</span>
+                             </div>
+                         ))}
+                     </div>
                 )}
             </div>
 

@@ -9,14 +9,20 @@ import Reports from './components/Reports';
 import HelpButton from './components/HelpButton';
 import Settings from './components/Settings';
 import ActivityLog from './components/ActivityLog';
+import Login from './components/Login';
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
   const [initialAction, setInitialAction] = useState<string | undefined>(undefined);
 
   const handleNavigate = (view: string, action?: string) => {
     setInitialAction(action);
     setCurrentView(view);
+  };
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
   };
 
   const renderContent = () => {
@@ -40,6 +46,10 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <>
       <div className="flex h-screen bg-gray-100">
@@ -52,7 +62,7 @@ const App: React.FC = () => {
           </main>
         </div>
       </div>
-      <HelpButton />
+      <HelpButton currentView={currentView} />
     </>
   );
 };
