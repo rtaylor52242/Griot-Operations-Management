@@ -15,8 +15,12 @@ interface EventData {
     status: string;
 }
 
-const Ticketing: React.FC = () => {
-    const [view, setView] = useState<'overview' | 'sell' | 'manage'>('overview');
+interface TicketingProps {
+    initialView?: string;
+}
+
+const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
+    const [view, setView] = useState<'overview' | 'sell' | 'manage'>((initialView as any) || 'overview');
     const [events, setEvents] = useState<EventData[]>([
         { id: 1, title: 'General Admission', date: 'Daily', sold: 452, available: 'Unlimited', status: 'Open' },
         { id: 2, title: 'Night at the Museum', date: 'Oct 28, 2024', sold: 185, available: 200, status: 'Selling Fast' },

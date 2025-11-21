@@ -78,7 +78,7 @@ const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
                                         onClick={() => updateQuantity(item.id, -1)}
                                         className="px-2 py-1 text-gray-600 hover:bg-gray-100"
                                     >-</button>
-                                    <span className="px-2 py-1 font-medium">{item.quantity}</span>
+                                    <span className="px-2 py-1 font-medium text-black">{item.quantity}</span>
                                     <button 
                                         onClick={() => updateQuantity(item.id, 1)}
                                         className="px-2 py-1 text-gray-600 hover:bg-gray-100"

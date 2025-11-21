@@ -13,8 +13,12 @@ import { Member, MembershipTier, MemberStatus } from '../types';
 
 type View = 'members' | 'tiers' | 'add-member' | 'edit-member' | 'edit-tier';
 
-const MembershipDashboard: React.FC = () => {
-    const [view, setView] = useState<View>('members');
+interface MembershipDashboardProps {
+    initialView?: string;
+}
+
+const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }) => {
+    const [view, setView] = useState<View>((initialView as View) || 'members');
     const [members, setMembers] = useState<Member[]>([]);
     const [tiers, setTiers] = useState<MembershipTier[]>([]);
     const [loading, setLoading] = useState<boolean>(true);

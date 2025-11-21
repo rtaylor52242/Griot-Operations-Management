@@ -4,7 +4,11 @@ import Header from './Header';
 import StatCard from './StatCard';
 import { UsersIcon, CurrencyDollarIcon, TicketIcon, TrendingUpIcon } from './icons';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+    onNavigate?: (view: string, action?: string) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return (
         <div>
             <Header title="Dashboard" />
@@ -39,26 +43,44 @@ const Dashboard: React.FC = () => {
                         ))}
                     </ul>
                     <div className="mt-4 text-right">
-                        <a href="#" className="text-brand-primary text-sm font-medium hover:text-brand-secondary">View all activity &rarr;</a>
+                        <a 
+                            href="#" 
+                            onClick={(e) => { e.preventDefault(); onNavigate?.('activity'); }}
+                            className="text-brand-primary text-sm font-medium hover:text-brand-secondary"
+                        >
+                            View all activity &rarr;
+                        </a>
                     </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-2 gap-4">
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group">
+                        <button 
+                            onClick={() => onNavigate?.('memberships', 'add-member')}
+                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+                        >
                             <span className="block text-lg font-semibold text-gray-800 group-hover:text-brand-primary">Add Member</span>
                             <span className="text-sm text-gray-500">Register a new signup</span>
                         </button>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group">
+                        <button 
+                            onClick={() => onNavigate?.('ticketing', 'sell')}
+                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+                        >
                             <span className="block text-lg font-semibold text-gray-800 group-hover:text-brand-primary">Sell Tickets</span>
                             <span className="text-sm text-gray-500">Process admission</span>
                         </button>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group">
+                        <button 
+                            onClick={() => onNavigate?.('fundraising', 'log-donation')}
+                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+                        >
                             <span className="block text-lg font-semibold text-gray-800 group-hover:text-brand-primary">Log Donation</span>
                             <span className="text-sm text-gray-500">Record a new gift</span>
                         </button>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group">
+                        <button 
+                            onClick={() => onNavigate?.('reports')}
+                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+                        >
                             <span className="block text-lg font-semibold text-gray-800 group-hover:text-brand-primary">Run Report</span>
                             <span className="text-sm text-gray-500">Daily summary</span>
                         </button>
