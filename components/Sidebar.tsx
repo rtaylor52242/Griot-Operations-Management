@@ -1,19 +1,21 @@
 
 import React from 'react';
-import { HomeIcon, UsersIcon, FundraisingIcon, TicketIcon, ChartBarIcon, CogIcon } from './icons';
+import { HomeIcon, UsersIcon, FundraisingIcon, TicketIcon, ChartBarIcon, CogIcon, LogoutIcon, DocumentIcon } from './icons';
 
 interface SidebarProps {
     currentView: string;
     onNavigate: (view: string) => void;
+    onSignOut: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onSignOut }) => {
   const navItems = [
     { id: 'dashboard', icon: HomeIcon, label: 'Dashboard' },
     { id: 'memberships', icon: UsersIcon, label: 'Memberships' },
     { id: 'fundraising', icon: FundraisingIcon, label: 'Fundraising' },
     { id: 'ticketing', icon: TicketIcon, label: 'Ticketing' },
     { id: 'reports', icon: ChartBarIcon, label: 'Reports' },
+    { id: 'documents', icon: DocumentIcon, label: 'Documents' },
   ];
 
   return (
@@ -40,11 +42,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
           ))}
         </nav>
       </div>
-       <div className="px-2 py-4">
+       <div className="px-2 py-4 border-t border-gray-700">
             <a 
                 href="#" 
                 onClick={(e) => { e.preventDefault(); onNavigate('settings'); }}
-                className={`flex items-center px-4 py-2 mt-2 rounded-lg transition-colors duration-300 ${
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-300 ${
                     currentView === 'settings'
                       ? 'bg-gray-700 text-white'
                       : 'text-gray-100 hover:bg-gray-700 hover:text-white'
@@ -53,6 +55,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
                 <CogIcon className="w-6 h-6" />
                 <span className="mx-4 font-medium">Settings</span>
             </a>
+            <button 
+                onClick={(e) => { e.preventDefault(); onSignOut(); }}
+                className="flex w-full items-center px-4 py-2 mt-2 rounded-lg transition-colors duration-300 text-gray-100 hover:bg-red-600 hover:text-white"
+            >
+                <LogoutIcon className="w-6 h-6" />
+                <span className="mx-4 font-medium">Sign Out</span>
+            </button>
         </div>
     </div>
   );

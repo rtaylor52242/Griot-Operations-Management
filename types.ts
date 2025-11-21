@@ -32,3 +32,12 @@ export interface Member {
   joinDate: string;
   renewalDate: string;
 }
+
+export interface Doc {
+    id: string;
+    name: string;
+    type: string;
+    size: string;
+    date: string;
+    url: string;
+}

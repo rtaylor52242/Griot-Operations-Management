@@ -58,6 +58,12 @@ const HelpButton: React.FC<HelpButtonProps> = ({ currentView = 'dashboard' }) =>
             case 'activity':
                 return `The current view is the **Activity Log**.
                 Explain that this is a comprehensive audit trail of system actions, useful for tracking changes and security.`;
+            case 'documents':
+                return `The current view is **Documents & Media**.
+                Explain:
+                1. **Upload**: How to upload new files and documents.
+                2. **View/Download**: How to access uploaded content.
+                3. **Delete**: Managing the file library.`;
             default:
                 return `The current view is the **Griot Operations App**.
                 Explain the general navigation sidebar and the purpose of the app for managing museum operations.`;
