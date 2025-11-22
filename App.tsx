@@ -1,17 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import MembershipDashboard from './components/MembershipDashboard';
 import Dashboard from './components/Dashboard';
 import Fundraising from './components/Fundraising';
 import Ticketing from './components/Ticketing';
 import Reports from './components/Reports';
-import HelpButton from './components/HelpButton';
 import Settings from './components/Settings';
 import ActivityLog from './components/ActivityLog';
 import Login from './components/Login';
 import Documents from './components/Documents';
 import { Doc } from './types';
+
+// Lazy load HelpButton to isolate @google/genai dependency
+const HelpButton = React.lazy(() => import('./components/HelpButton'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -78,7 +80,9 @@ const App: React.FC = () => {
           </main>
         </div>
       </div>
-      <HelpButton currentView={currentView} />
+      <Suspense fallback={null}>
+        <HelpButton currentView={currentView} />
+      </Suspense>
     </>
   );
 };
