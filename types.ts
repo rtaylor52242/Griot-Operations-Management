@@ -6,6 +6,12 @@ export enum MemberStatus {
   Pending = 'Pending',
 }
 
+export enum MemberRole {
+  Admin = 'Admin',
+  Member = 'Member User',
+  Guest = 'Guest',
+}
+
 export interface MembershipBenefit {
   id: string;
   name: string;
@@ -29,6 +35,7 @@ export interface Member {
   email: string;
   tierId: string;
   status: MemberStatus;
+  role: MemberRole;
   joinDate: string;
   renewalDate: string;
 }
@@ -50,4 +57,43 @@ export interface Campaign {
     donors: number;
     status: string;
     description?: string;
+}
+
+export interface Donation {
+    id: string;
+    donorName: string;
+    amount: number;
+    campaignId: number;
+    campaignName: string;
+    date: string;
+    paymentMethod: string;
+    notes?: string;
+}
+
+export interface TicketEvent {
+    id: number;
+    title: string;
+    date: string;
+    sold: number;
+    capacity: number | string; // 'Unlimited' or number
+    status: string;
+    price: number; // Average price for revenue calculation
+}
+
+export interface User {
+    username: string;
+    name: string;
+    role: string;
+}
+
+export type ActivityType = 'membership' | 'ticketing' | 'fundraising' | 'system';
+
+export interface Activity {
+    id: number;
+    action: string;
+    detail: string;
+    user: string;
+    userRole: string;
+    timestamp: string;
+    type: ActivityType;
 }

@@ -58,6 +58,7 @@ const Reports: React.FC = () => {
                                         onClick={() => setSelectedReport(report)}
                                     >
                                         <div className="flex items-center">
+                                            <span className="text-gray-400 font-medium mr-3 w-4 text-right text-sm">{rIndex + 1}.</span>
                                             <DocumentTextIcon className="w-5 h-5 text-gray-400 group-hover:text-brand-primary mr-3" />
                                             <span className="text-gray-600 group-hover:text-gray-900">{report}</span>
                                         </div>

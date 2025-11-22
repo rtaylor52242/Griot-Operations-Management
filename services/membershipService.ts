@@ -1,5 +1,5 @@
 
-import { Member, MembershipTier, MembershipBenefit, MemberStatus } from '../types';
+import { Member, MembershipTier, MembershipBenefit, MemberStatus, MemberRole } from '../types';
 
 const benefits: { [key: string]: MembershipBenefit } = {
   freeAdmission: { id: 'b1', name: 'Free General Admission', description: 'Unlimited free entry to all standard exhibits.' },
@@ -50,16 +50,16 @@ let tiers: MembershipTier[] = [
 ];
 
 let members: Member[] = [
-  { id: 'm1', firstName: 'Alice', lastName: 'Johnson', email: 'alice.j@example.com', tierId: 't2', status: MemberStatus.Active, joinDate: '2023-05-15', renewalDate: '2025-05-15' },
-  { id: 'm2', firstName: 'Bob', lastName: 'Smith', email: 'bob.smith@example.com', tierId: 't1', status: MemberStatus.Active, joinDate: '2023-01-20', renewalDate: '2025-01-20' },
-  { id: 'm3', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.b@example.com', tierId: 't3', status: MemberStatus.Active, joinDate: '2022-11-30', renewalDate: '2024-11-30' },
-  { id: 'm4', firstName: 'Diana', lastName: 'Prince', email: 'diana.p@example.com', tierId: 't4', status: MemberStatus.Expired, joinDate: '2022-02-10', renewalDate: '2023-02-10' },
-  { id: 'm5', firstName: 'Ethan', lastName: 'Hunt', email: 'ethan.h@example.com', tierId: 't2', status: MemberStatus.Active, joinDate: '2023-08-01', renewalDate: '2025-08-01' },
-  { id: 'm6', firstName: 'Fiona', lastName: 'Glenanne', email: 'fiona.g@example.com', tierId: 't1', status: MemberStatus.Cancelled, joinDate: '2023-03-05', renewalDate: '2024-03-05' },
-  { id: 'm7', firstName: 'George', lastName: 'Costanza', email: 'george.c@example.com', tierId: 't2', status: MemberStatus.Pending, joinDate: '2024-07-20', renewalDate: '2025-07-20' },
-  { id: 'm8', firstName: 'Hannah', lastName: 'Montana', email: 'hannah.m@example.com', tierId: 't3', status: MemberStatus.Active, joinDate: '2023-09-12', renewalDate: '2024-09-12' },
-  { id: 'm9', firstName: 'Ian', lastName: 'Malcolm', email: 'ian.m@example.com', tierId: 't1', status: MemberStatus.Active, joinDate: '2023-06-22', renewalDate: '2025-06-22' },
-  { id: 'm10', firstName: 'Jane', lastName: 'Doe', email: 'jane.d@example.com', tierId: 't4', status: MemberStatus.Active, joinDate: '2022-12-01', renewalDate: '2024-12-01' },
+  { id: 'm1', firstName: 'Alice', lastName: 'Johnson', email: 'alice.j@example.com', tierId: 't2', status: MemberStatus.Active, role: MemberRole.Member, joinDate: '2023-05-15', renewalDate: '2025-05-15' },
+  { id: 'm2', firstName: 'Bob', lastName: 'Smith', email: 'bob.smith@example.com', tierId: 't1', status: MemberStatus.Active, role: MemberRole.Guest, joinDate: '2023-01-20', renewalDate: '2025-01-20' },
+  { id: 'm3', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.b@example.com', tierId: 't3', status: MemberStatus.Active, role: MemberRole.Member, joinDate: '2022-11-30', renewalDate: '2024-11-30' },
+  { id: 'm4', firstName: 'Diana', lastName: 'Prince', email: 'diana.p@example.com', tierId: 't4', status: MemberStatus.Expired, role: MemberRole.Admin, joinDate: '2022-02-10', renewalDate: '2023-02-10' },
+  { id: 'm5', firstName: 'Ethan', lastName: 'Hunt', email: 'ethan.h@example.com', tierId: 't2', status: MemberStatus.Active, role: MemberRole.Member, joinDate: '2023-08-01', renewalDate: '2025-08-01' },
+  { id: 'm6', firstName: 'Fiona', lastName: 'Glenanne', email: 'fiona.g@example.com', tierId: 't1', status: MemberStatus.Cancelled, role: MemberRole.Guest, joinDate: '2023-03-05', renewalDate: '2024-03-05' },
+  { id: 'm7', firstName: 'George', lastName: 'Costanza', email: 'george.c@example.com', tierId: 't2', status: MemberStatus.Pending, role: MemberRole.Guest, joinDate: '2024-07-20', renewalDate: '2025-07-20' },
+  { id: 'm8', firstName: 'Hannah', lastName: 'Montana', email: 'hannah.m@example.com', tierId: 't3', status: MemberStatus.Active, role: MemberRole.Member, joinDate: '2023-09-12', renewalDate: '2024-09-12' },
+  { id: 'm9', firstName: 'Ian', lastName: 'Malcolm', email: 'ian.m@example.com', tierId: 't1', status: MemberStatus.Active, role: MemberRole.Admin, joinDate: '2023-06-22', renewalDate: '2025-06-22' },
+  { id: 'm10', firstName: 'Jane', lastName: 'Doe', email: 'jane.d@example.com', tierId: 't4', status: MemberStatus.Active, role: MemberRole.Member, joinDate: '2022-12-01', renewalDate: '2024-12-01' },
 ];
 
 export const getTiers = async (): Promise<MembershipTier[]> => {

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { logActivity } from '../services/activityService';
 
 interface SellTicketsProps {
     onCancel: () => void;
@@ -34,6 +35,15 @@ const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
             }
             return item;
         }).filter(item => item.quantity > 0));
+    };
+
+    const handleCheckout = () => {
+        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+        const totalValue = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const description = `${totalItems} tickets sold (Revenue: $${totalValue.toFixed(2)})`;
+        
+        logActivity('Ticket Sale', description, 'ticketing');
+        onComplete();
     };
 
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -111,7 +121,7 @@ const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
                             Cancel
                         </button>
                         <button 
-                            onClick={onComplete}
+                            onClick={handleCheckout}
                             disabled={cart.length === 0}
                             className="py-3 px-4 bg-brand-primary rounded-lg font-bold text-white hover:bg-brand-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                         >

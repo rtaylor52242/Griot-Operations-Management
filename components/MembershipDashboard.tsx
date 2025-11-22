@@ -18,7 +18,8 @@ import {
     addTierService, 
     updateTierService 
 } from '../services/membershipService';
-import { Member, MembershipTier, MemberStatus } from '../types';
+import { logActivity } from '../services/activityService';
+import { Member, MembershipTier, MemberStatus, MemberRole } from '../types';
 
 type View = 'members' | 'tiers' | 'add-member' | 'edit-member' | 'edit-tier' | 'add-tier';
 
@@ -51,7 +52,7 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
         fetchData();
     }, []);
 
-    const handleAddMember = async (data: { firstName: string; lastName: string; email: string; tierId: string }) => {
+    const handleAddMember = async (data: { firstName: string; lastName: string; email: string; tierId: string; role: MemberRole }) => {
         const newMember: Member = {
             id: `m${Date.now()}`,
             firstName: data.firstName,
@@ -59,11 +60,16 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
             email: data.email,
             tierId: data.tierId,
             status: MemberStatus.Active,
+            role: data.role,
             joinDate: new Date().toISOString().split('T')[0],
             renewalDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
         };
         await addMemberService(newMember);
         setMembers(prev => [newMember, ...prev]);
+        
+        const tierName = tiers.find(t => t.id === data.tierId)?.name || 'Unknown Tier';
+        logActivity('New Membership', `${data.firstName} ${data.lastName} joined as ${tierName}`, 'membership');
+
         setView('members');
     };
 
@@ -72,30 +78,37 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
             id: `t${Date.now()}`,
             ...data,
             memberCount: 0,
-            benefits: [], // Initialize with empty benefits
+            benefits: [], 
         };
         await addTierService(newTier);
         setTiers(prev => [...prev, newTier]);
+        logActivity('New Tier', `Created membership tier: ${data.name}`, 'membership');
         setView('tiers');
     };
 
     const handleUpdateMember = async (updatedMember: Member) => {
         await updateMemberService(updatedMember);
         setMembers(prev => prev.map(m => m.id === updatedMember.id ? updatedMember : m));
+        logActivity('Member Updated', `Updated details for ${updatedMember.firstName} ${updatedMember.lastName}`, 'membership');
         setView('members');
         setSelectedMember(null);
     };
 
     const handleDeleteMember = async (memberId: string) => {
         if (window.confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
+            const member = members.find(m => m.id === memberId);
             await deleteMemberService(memberId);
             setMembers(prev => prev.filter(m => m.id !== memberId));
+            if (member) {
+                logActivity('Member Deleted', `Deleted member ${member.firstName} ${member.lastName}`, 'membership');
+            }
         }
     };
 
     const handleUpdateTier = async (updatedTier: MembershipTier) => {
         await updateTierService(updatedTier);
         setTiers(prev => prev.map(t => t.id === updatedTier.id ? updatedTier : t));
+        logActivity('Tier Updated', `Updated tier: ${updatedTier.name}`, 'membership');
         setView('tiers');
         setSelectedTier(null);
     };

@@ -1,19 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
 import SellTickets from './SellTickets';
 import ManageEvent from './ManageEvent';
 import { TicketIcon, CalendarIcon, CurrencyDollarIcon } from './icons';
-
-interface EventData {
-    id: number;
-    title: string;
-    date: string;
-    sold: number;
-    available: number | string;
-    status: string;
-}
+import { TicketEvent } from '../types';
+import { getEvents, updateEventService, deleteEventService } from '../services/ticketingService';
 
 interface TicketingProps {
     initialView?: string;
@@ -21,28 +14,58 @@ interface TicketingProps {
 
 const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
     const [view, setView] = useState<'overview' | 'sell' | 'manage'>((initialView as any) || 'overview');
-    const [events, setEvents] = useState<EventData[]>([
-        { id: 1, title: 'General Admission', date: 'Daily', sold: 452, available: 'Unlimited', status: 'Open' },
-        { id: 2, title: 'Night at the Museum', date: 'Oct 28, 2024', sold: 185, available: 200, status: 'Selling Fast' },
-        { id: 3, title: 'Lecture: Art History 101', date: 'Nov 05, 2024', sold: 45, available: 100, status: 'Open' },
-        { id: 4, title: 'Workshop: Pottery', date: 'Nov 12, 2024', sold: 20, available: 20, status: 'Sold Out' },
-    ]);
-    const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+    const [events, setEvents] = useState<TicketEvent[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedEvent, setSelectedEvent] = useState<TicketEvent | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const data = await getEvents();
+                setEvents(data);
+            } catch (error) {
+                console.error("Failed to load events", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
     const handleSellClick = () => {
         setView('sell');
     };
 
-    const handleManageClick = (event: EventData) => {
+    const handleManageClick = (event: TicketEvent) => {
         setSelectedEvent(event);
         setView('manage');
     };
 
-    const handleSaveEvent = (updatedEvent: EventData) => {
-        setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    const handleDeleteEvent = async (id: number) => {
+        if (window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+            await deleteEventService(id);
+            setEvents(prev => prev.filter(e => e.id !== id));
+            return true;
+        }
+        return false;
+    };
+
+    const handleSaveEvent = async (updatedEvent: any) => {
+        // Cast to TicketEvent as manage form might return partial
+        const fullEvent: TicketEvent = {
+             ...updatedEvent,
+             price: updatedEvent.price || 20 // Default if missing
+        };
+        await updateEventService(fullEvent);
+        setEvents(events.map(e => e.id === fullEvent.id ? fullEvent : e));
         setView('overview');
         setSelectedEvent(null);
     };
+
+    // Calculate stats
+    const dailySold = events.find(e => e.title === 'General Admission')?.sold || 0;
+    const totalRevenue = events.reduce((sum, e) => sum + (e.sold * e.price), 0);
 
     return (
         <div>
@@ -51,13 +74,16 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
                     <Header title="Ticketing" buttonText="Sell Tickets" onButtonClick={handleSellClick} />
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <StatCard title="Tickets Sold (Today)" value="452" icon={TicketIcon} />
-                        <StatCard title="Ticket Revenue (Today)" value="$12,450" icon={CurrencyDollarIcon} />
+                        <StatCard title="Daily Tickets Sold" value={dailySold.toString()} icon={TicketIcon} />
+                        <StatCard title="Est. Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={CurrencyDollarIcon} />
                         <StatCard title="Upcoming Events" value={events.length.toString()} icon={CalendarIcon} />
                     </div>
 
                     <div className="mb-6">
                         <h2 className="text-lg font-semibold text-gray-800 mb-4">Current & Upcoming Events</h2>
+                        {loading ? (
+                            <p className="text-gray-500">Loading events...</p>
+                        ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {events.map((event) => (
                                 <div key={event.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
@@ -77,18 +103,27 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
                                     
                                     <div className="flex justify-between items-center text-sm mb-4">
                                         <span className="text-gray-600">Sold: <span className="font-semibold">{event.sold}</span></span>
-                                        <span className="text-gray-600">Capacity: <span className="font-semibold">{event.available}</span></span>
+                                        <span className="text-gray-600">Capacity: <span className="font-semibold">{event.capacity}</span></span>
                                     </div>
                                     
-                                    <button 
-                                        onClick={() => handleManageClick(event)}
-                                        className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        Manage Event
-                                    </button>
+                                    <div className="flex space-x-3">
+                                        <button 
+                                            onClick={() => handleManageClick(event)}
+                                            className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            Manage
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteEvent(event.id)}
+                                            className="py-2 px-4 border border-red-300 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
+                        )}
                     </div>
                 </>
             )}
@@ -104,8 +139,14 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
                 <>
                      <Header title="Manage Event" />
                      <ManageEvent 
-                        event={selectedEvent} 
+                        event={selectedEvent as any} 
                         onSave={handleSaveEvent} 
+                        onDelete={(id) => {
+                             if (handleDeleteEvent(id)) {
+                                 setView('overview');
+                                 setSelectedEvent(null);
+                             }
+                        }}
                         onCancel={() => { setView('overview'); setSelectedEvent(null); }} 
                     />
                 </>

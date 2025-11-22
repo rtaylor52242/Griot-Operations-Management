@@ -1,3 +1,4 @@
+
 import React, { useState, Suspense, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MembershipDashboard from './components/MembershipDashboard';
@@ -9,20 +10,22 @@ import Settings from './components/Settings';
 import ActivityLog from './components/ActivityLog';
 import Login from './components/Login';
 import Documents from './components/Documents';
+import Help from './components/Help';
 import ThemeSelector, { themes } from './components/ThemeSelector';
-import { Doc } from './types';
+import { Doc, User } from './types';
+import { logActivity, setCurrentUserSession } from './services/activityService';
 
-// Lazy load HelpButton to isolate @google/genai dependency
-const HelpButton = React.lazy(() => import('./components/HelpButton'));
 const GriotChat = React.lazy(() => import('./components/GriotChat'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState('dashboard');
   const [initialAction, setInitialAction] = useState<string | undefined>(undefined);
   
   // Theme State
   const [currentTheme, setCurrentTheme] = useState('default');
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Lifted state for Documents to persist across navigation
   const [docs, setDocs] = useState<Doc[]>([
@@ -35,21 +38,58 @@ const App: React.FC = () => {
   useEffect(() => {
     const theme = themes.find(t => t.id === currentTheme) || themes[0];
     const root = document.documentElement;
+    
+    // Apply Brand Colors
     root.style.setProperty('--color-brand-primary', theme.primary);
     root.style.setProperty('--color-brand-secondary', theme.secondary);
-  }, [currentTheme]);
+
+    // Apply Dark Mode Colors
+    if (isDarkMode) {
+        root.style.setProperty('--color-gray-50', '17 24 39');     
+        root.style.setProperty('--color-gray-100', '31 41 55');    
+        root.style.setProperty('--color-gray-200', '55 65 81');    
+        root.style.setProperty('--color-gray-300', '75 85 99');    
+        root.style.setProperty('--color-gray-400', '107 114 128'); 
+        root.style.setProperty('--color-gray-500', '156 163 175'); 
+        root.style.setProperty('--color-gray-600', '209 213 219'); 
+        root.style.setProperty('--color-gray-700', '229 231 235'); 
+        root.style.setProperty('--color-gray-800', '243 244 246'); 
+        root.style.setProperty('--color-gray-900', '249 250 251'); 
+        root.style.setProperty('--color-white', '31 41 55');       
+        root.style.setProperty('--color-black', '255 255 255');    
+    } else {
+        root.style.setProperty('--color-gray-50', '249 250 251');
+        root.style.setProperty('--color-gray-100', '243 244 246');
+        root.style.setProperty('--color-gray-200', '229 231 235');
+        root.style.setProperty('--color-gray-300', '209 213 219');
+        root.style.setProperty('--color-gray-400', '156 163 175');
+        root.style.setProperty('--color-gray-500', '107 114 128');
+        root.style.setProperty('--color-gray-600', '75 85 99');
+        root.style.setProperty('--color-gray-700', '55 65 81');
+        root.style.setProperty('--color-gray-800', '31 41 55');
+        root.style.setProperty('--color-gray-900', '17 24 39');
+        root.style.setProperty('--color-white', '255 255 255');
+        root.style.setProperty('--color-black', '0 0 0');
+    }
+
+  }, [currentTheme, isDarkMode]);
 
   const handleNavigate = (view: string, action?: string) => {
     setInitialAction(action);
     setCurrentView(view);
   };
 
-  const handleLogin = () => {
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    setCurrentUserSession(user); // Update service state
     setIsAuthenticated(true);
+    logActivity('Login', `User ${user.username} logged in`, 'system');
   };
 
   const handleSignOut = () => {
+    logActivity('Logout', `User ${currentUser?.username || 'Unknown'} logged out`, 'system');
     setIsAuthenticated(false);
+    setCurrentUser(null);
     setCurrentView('dashboard');
   };
 
@@ -71,6 +111,8 @@ const App: React.FC = () => {
         return <ActivityLog />;
       case 'documents':
         return <Documents docs={docs} setDocs={setDocs} />;
+      case 'help':
+        return <Help />;
       case 'chat':
           return (
             <Suspense fallback={
@@ -102,10 +144,12 @@ const App: React.FC = () => {
           </main>
         </div>
       </div>
-      <Suspense fallback={null}>
-        <HelpButton currentView={currentView} />
-      </Suspense>
-      <ThemeSelector currentTheme={currentTheme} onThemeSelect={setCurrentTheme} />
+      <ThemeSelector 
+        currentTheme={currentTheme} 
+        onThemeSelect={setCurrentTheme}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+      />
     </>
   );
 };

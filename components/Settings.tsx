@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Header from './Header';
 import { UsersIcon, BellIcon, CreditCardIcon, LockClosedIcon, ChartBarIcon } from './icons';
+import { logActivity } from '../services/activityService';
 
 interface PaymentMethod {
     last4: string;
@@ -30,11 +31,70 @@ interface TeamMember {
 const Settings: React.FC = () => {
     const [activeTab, setActiveTab] = useState('general');
 
+    const timezones = [
+        "Afghanistan Time (UTC+04:30)",
+        "Alaska Standard Time (UTC-09:00)",
+        "Aleutian Standard Time (UTC-10:00)",
+        "Argentina Standard Time (UTC-03:00)",
+        "Arizona (UTC-07:00)",
+        "Atlantic Standard Time (UTC-04:00)",
+        "Australian Central Standard Time (UTC+09:30)",
+        "Australian Central Western Standard Time (UTC+08:45)",
+        "Australian Eastern Standard Time (UTC+10:00)",
+        "Australian Western Standard Time (UTC+08:00)",
+        "Azores Standard Time (UTC-01:00)",
+        "Bangladesh Standard Time (UTC+06:00)",
+        "Brasilia Time (UTC-03:00)",
+        "Cape Verde Standard Time (UTC-01:00)",
+        "Central Africa Time (UTC+02:00)",
+        "Central European Time (UTC+01:00)",
+        "Central Standard Time (UTC-06:00)",
+        "Chatham Islands Standard Time (UTC+12:45)",
+        "China Standard Time (UTC+08:00)",
+        "Dateline Standard Time (UTC-12:00)",
+        "East Africa Time (UTC+03:00)",
+        "Eastern European Time (UTC+02:00)",
+        "Eastern Standard Time (UTC-05:00)",
+        "Fiji Time (UTC+12:00)",
+        "Greenwich Mean Time (UTC+00:00)",
+        "Gulf Standard Time (UTC+04:00)",
+        "Hawaiian Standard Time (UTC-10:00)",
+        "India Standard Time (UTC+05:30)",
+        "Indiana (East) (UTC-05:00)",
+        "Indochina Time (UTC+07:00)",
+        "Iran Standard Time (UTC+03:30)",
+        "Japan Standard Time (UTC+09:00)",
+        "Korea Standard Time (UTC+09:00)",
+        "Line Islands Time (UTC+14:00)",
+        "Lord Howe Standard Time (UTC+10:30)",
+        "Marquesas Standard Time (UTC-09:30)",
+        "Mid-Atlantic Standard Time (UTC-02:00)",
+        "Moscow Standard Time (UTC+03:00)",
+        "Mountain Standard Time (UTC-07:00)",
+        "Myanmar Time (UTC+06:30)",
+        "Nepal Time (UTC+05:45)",
+        "New Zealand Standard Time (UTC+12:00)",
+        "Newfoundland Standard Time (UTC-03:30)",
+        "Norfolk Time (UTC+11:00)",
+        "Pacific Standard Time (UTC-08:00)",
+        "Pakistan Standard Time (UTC+05:00)",
+        "Saskatchewan (UTC-06:00)",
+        "Solomon Islands Time (UTC+11:00)",
+        "South Africa Standard Time (UTC+02:00)",
+        "Tonga Time (UTC+13:00)",
+        "UTC (UTC+00:00)",
+        "UTC-08 (UTC-08:00)",
+        "UTC-09 (UTC-09:00)",
+        "UTC-11 (UTC-11:00)",
+        "Venezuela Time (UTC-04:00)",
+        "West Africa Time (UTC+01:00)"
+    ].sort();
+
     // General Settings State
     const [generalSettings, setGeneralSettings] = useState({
         orgName: 'Griot Cultural Center',
         contactEmail: 'admin@griot.org',
-        timezone: 'Eastern Standard Time (EST)'
+        timezone: 'Eastern Standard Time (UTC-05:00)'
     });
 
     // Payment Method State
@@ -101,21 +161,28 @@ const Settings: React.FC = () => {
             nameOnCard: editPaymentForm.nameOnCard 
         });
         setIsEditingPayment(false);
+        logActivity('Settings Updated', 'Updated billing payment method', 'system');
         alert("Payment method updated successfully.");
     };
 
     const handleSaveGeneral = () => {
+        logActivity('Settings Updated', 'Updated general organization settings', 'system');
         alert(`Settings Saved:\nOrganization: ${generalSettings.orgName}\nEmail: ${generalSettings.contactEmail}\nTimezone: ${generalSettings.timezone}`);
     };
 
     const togglePermission = (memberId: string, screen: keyof AppPermissions) => {
         setTeamMembers(teamMembers.map(member => {
             if (member.id === memberId) {
+                const newValue = !member.permissions[screen];
+                if (editingMemberId === member.id) {
+                    // Log only if active editing session
+                    logActivity('Settings Updated', `Changed ${screen} permission for ${member.name} to ${newValue}`, 'system');
+                }
                 return {
                     ...member,
                     permissions: {
                         ...member.permissions,
-                        [screen]: !member.permissions[screen]
+                        [screen]: newValue
                     }
                 };
             }
@@ -178,11 +245,9 @@ const Settings: React.FC = () => {
                                         onChange={(e) => setGeneralSettings({...generalSettings, timezone: e.target.value})}
                                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-brand-primary focus:border-brand-primary sm:text-sm bg-white text-black"
                                     >
-                                        <option>Eastern Standard Time (EST)</option>
-                                        <option>Central Standard Time (CST)</option>
-                                        <option>Pacific Standard Time (PST)</option>
-                                        <option>Mountain Standard Time (MST)</option>
-                                        <option>Greenwich Mean Time (GMT)</option>
+                                        {timezones.map((tz) => (
+                                            <option key={tz} value={tz}>{tz}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="pt-4">
@@ -270,7 +335,10 @@ const Settings: React.FC = () => {
                                 ))}
                                 <div className="pt-4">
                                     <button 
-                                        onClick={() => alert("Notification preferences updated.")}
+                                        onClick={() => {
+                                            logActivity('Settings Updated', 'Updated notification preferences', 'system');
+                                            alert("Notification preferences updated.");
+                                        }}
                                         className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-secondary transition-colors"
                                     >
                                         Update Preferences
@@ -386,7 +454,12 @@ const Settings: React.FC = () => {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                                     <input type="password" className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-brand-primary focus:border-brand-primary sm:text-sm bg-white text-black" />
                                 </div>
-                                <button className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-secondary transition-colors">Update Password</button>
+                                <button 
+                                    onClick={() => logActivity('Settings Updated', 'Password changed', 'system')}
+                                    className="bg-brand-primary text-white px-4 py-2 rounded-md hover:bg-brand-secondary transition-colors"
+                                >
+                                    Update Password
+                                </button>
                              </div>
                         </div>
                     )}

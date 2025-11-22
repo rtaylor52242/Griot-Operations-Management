@@ -14,9 +14,10 @@ interface ManageEventProps {
     event: EventData | null;
     onSave: (updatedEvent: EventData) => void;
     onCancel: () => void;
+    onDelete?: (id: number) => void;
 }
 
-const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel }) => {
+const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel, onDelete }) => {
     const [formData, setFormData] = useState<EventData>({
         id: 0,
         title: '',
@@ -117,20 +118,33 @@ const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel }) =>
                     </div>
                 </div>
 
-                <div className="mt-8 flex justify-end">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 mr-3"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-primary hover:bg-brand-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary"
-                    >
-                        Save Event
-                    </button>
+                <div className="mt-8 flex items-center justify-between">
+                    <div>
+                        {event && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(event.id)}
+                                className="bg-white py-2 px-4 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                                Delete Event
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 mr-3"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-primary hover:bg-brand-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary"
+                        >
+                            Save Event
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

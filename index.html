@@ -13,15 +13,21 @@
             colors: {
               'brand-primary': 'rgb(var(--color-brand-primary) / <alpha-value>)',
               'brand-secondary': 'rgb(var(--color-brand-secondary) / <alpha-value>)',
-              'gray-800': '#1f2937',
-              'gray-700': '#374151',
-              'gray-600': '#4b5563',
-              'gray-500': '#6b7280',
-              'gray-400': '#9ca3af',
-              'gray-300': '#d1d5db',
-              'gray-200': '#e5e7eb',
-              'gray-100': '#f3f4f6',
-              'gray-50': '#f9fafb',
+              // Override default grays/white/black with CSS variables to support light/dark mode toggle
+              gray: {
+                50: 'rgb(var(--color-gray-50) / <alpha-value>)',
+                100: 'rgb(var(--color-gray-100) / <alpha-value>)',
+                200: 'rgb(var(--color-gray-200) / <alpha-value>)',
+                300: 'rgb(var(--color-gray-300) / <alpha-value>)',
+                400: 'rgb(var(--color-gray-400) / <alpha-value>)',
+                500: 'rgb(var(--color-gray-500) / <alpha-value>)',
+                600: 'rgb(var(--color-gray-600) / <alpha-value>)',
+                700: 'rgb(var(--color-gray-700) / <alpha-value>)',
+                800: 'rgb(var(--color-gray-800) / <alpha-value>)',
+                900: 'rgb(var(--color-gray-900) / <alpha-value>)',
+              },
+              white: 'rgb(var(--color-white) / <alpha-value>)',
+              black: 'rgb(var(--color-black) / <alpha-value>)',
             }
           }
         }
@@ -32,6 +38,20 @@
         /* Default Theme (Indigo) */
         --color-brand-primary: 79 70 229;
         --color-brand-secondary: 124 58 237;
+
+        /* Light Mode Defaults */
+        --color-gray-50: 249 250 251;
+        --color-gray-100: 243 244 246;
+        --color-gray-200: 229 231 235;
+        --color-gray-300: 209 213 219;
+        --color-gray-400: 156 163 175;
+        --color-gray-500: 107 114 128;
+        --color-gray-600: 75 85 99;
+        --color-gray-700: 55 65 81;
+        --color-gray-800: 31 41 55;
+        --color-gray-900: 17 24 39;
+        --color-white: 255 255 255;
+        --color-black: 0 0 0;
       }
     </style>
   <script type="importmap">

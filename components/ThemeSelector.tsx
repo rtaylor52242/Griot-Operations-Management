@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
-import { PaintBrushIcon } from './icons';
+import { PaintBrushIcon, SunIcon, MoonIcon } from './icons';
 
 interface Theme {
     id: string;
@@ -26,9 +27,11 @@ export const themes: Theme[] = [
 interface ThemeSelectorProps {
     currentTheme: string;
     onThemeSelect: (themeId: string) => void;
+    isDarkMode: boolean;
+    onToggleDarkMode: () => void;
 }
 
-const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onThemeSelect }) => {
+const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onThemeSelect, isDarkMode, onToggleDarkMode }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleOpen = () => setIsOpen(!isOpen);
@@ -50,7 +53,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onThemeSele
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">Select Theme</h3>
+                    <h3 className="text-lg font-bold text-gray-800">Appearance</h3>
                     <button 
                         onClick={() => setIsOpen(false)}
                         className="text-gray-400 hover:text-gray-600"
@@ -58,6 +61,25 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onThemeSele
                         ✕
                     </button>
                 </div>
+
+                {/* Dark Mode Toggle */}
+                <div className="flex items-center justify-between mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center">
+                        {isDarkMode ? <MoonIcon className="w-5 h-5 text-brand-primary mr-3" /> : <SunIcon className="w-5 h-5 text-brand-primary mr-3" />}
+                        <span className="text-sm font-medium text-gray-900">Mode</span>
+                    </div>
+                    <button 
+                        onClick={onToggleDarkMode}
+                        className={`relative inline-flex items-center h-6 rounded-full w-11 focus:outline-none transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-brand-primary' : 'bg-gray-300'}`}
+                    >
+                        <span className="sr-only">Toggle Dark Mode</span>
+                        <span 
+                            className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${isDarkMode ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                    </button>
+                </div>
+
+                <div className="mb-2 text-sm font-medium text-gray-600 uppercase tracking-wide">Select Theme</div>
                 <div className="grid grid-cols-2 gap-3">
                     {themes.map((theme) => (
                         <button
@@ -88,7 +110,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onThemeSele
         <>
             <button
                 onClick={toggleOpen}
-                className="fixed bottom-24 right-6 bg-white text-gray-700 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transform hover:scale-110 transition-all duration-200 z-40 border border-gray-200"
+                className="fixed bottom-6 right-6 bg-white text-gray-700 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transform hover:scale-110 transition-all duration-200 z-40 border border-gray-200"
                 aria-label="Change Theme"
                 title="Change Theme"
             >

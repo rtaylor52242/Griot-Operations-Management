@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { MembershipTier } from '../types';
+import { MembershipTier, MemberRole } from '../types';
 
 interface AddMemberFormProps {
     tiers: MembershipTier[];
-    onSave: (member: { firstName: string; lastName: string; email: string; tierId: string }) => void;
+    onSave: (member: { firstName: string; lastName: string; email: string; tierId: string; role: MemberRole }) => void;
     onCancel: () => void;
 }
 
@@ -13,10 +13,11 @@ const AddMemberForm: React.FC<AddMemberFormProps> = ({ tiers, onSave, onCancel }
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [tierId, setTierId] = useState(tiers.length > 0 ? tiers[0].id : '');
+    const [role, setRole] = useState<MemberRole>(MemberRole.Member);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ firstName, lastName, email, tierId });
+        onSave({ firstName, lastName, email, tierId, role });
     };
 
     return (
@@ -74,7 +75,7 @@ const AddMemberForm: React.FC<AddMemberFormProps> = ({ tiers, onSave, onCancel }
                         </div>
                     </div>
 
-                    <div className="sm:col-span-6">
+                    <div className="sm:col-span-3">
                         <label htmlFor="tier" className="block text-sm font-medium text-gray-700">
                             Membership Tier
                         </label>
@@ -89,6 +90,27 @@ const AddMemberForm: React.FC<AddMemberFormProps> = ({ tiers, onSave, onCancel }
                                 {tiers.map((tier) => (
                                     <option key={tier.id} value={tier.id}>
                                         {tier.name} - ${tier.annualPrice}/year
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                        <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                            User Role
+                        </label>
+                        <div className="mt-1">
+                            <select
+                                id="role"
+                                name="role"
+                                value={role}
+                                onChange={(e) => setRole(e.target.value as MemberRole)}
+                                className="shadow-sm focus:ring-brand-primary focus:border-brand-primary block w-full sm:text-sm border-gray-300 rounded-md p-2 border bg-white text-black"
+                            >
+                                {Object.values(MemberRole).map((r) => (
+                                    <option key={r} value={r}>
+                                        {r}
                                     </option>
                                 ))}
                             </select>

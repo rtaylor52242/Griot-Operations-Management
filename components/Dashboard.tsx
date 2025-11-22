@@ -1,23 +1,113 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
 import { UsersIcon, CurrencyDollarIcon, TicketIcon, TrendingUpIcon } from './icons';
+import { getMembers, getTiers } from '../services/membershipService';
+import { getCampaigns } from '../services/fundraisingService';
+import { getEvents } from '../services/ticketingService';
+import { Member, MemberStatus } from '../types';
 
 interface DashboardProps {
     onNavigate?: (view: string, action?: string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+    const [stats, setStats] = useState({
+        visitors: 0,
+        revenue: 0,
+        activeMembers: 0,
+        growthRate: 0
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [members, tiers, campaigns, events] = await Promise.all([
+                    getMembers(),
+                    getTiers(),
+                    getCampaigns(),
+                    getEvents()
+                ]);
+
+                // Calculate Active Members
+                const activeMembers = members.filter(m => m.status === MemberStatus.Active).length;
+
+                // Calculate Total Visitors (Proxy: Sum of tickets sold for daily/today events)
+                // For demo: Sum of all sold tickets in event list
+                const totalVisitors = events.reduce((sum, e) => sum + e.sold, 0);
+
+                // Calculate Revenue YTD
+                // 1. Fundraising
+                const fundraisingRevenue = campaigns.reduce((sum, c) => sum + c.raised, 0);
+                
+                // 2. Membership (Approximate based on tier price)
+                // Simple logic: member.tier price. In real app, we'd check payment history.
+                let membershipRevenue = 0;
+                members.forEach(m => {
+                    if (m.status === MemberStatus.Active) {
+                        const tier = tiers.find(t => t.id === m.tierId);
+                        if (tier) membershipRevenue += tier.annualPrice;
+                    }
+                });
+
+                // 3. Ticketing
+                const ticketingRevenue = events.reduce((sum, e) => sum + (e.sold * e.price), 0);
+
+                const totalRevenue = fundraisingRevenue + membershipRevenue + ticketingRevenue;
+
+                // Calculate Growth Rate (Year to Date or simple Month over Month proxy)
+                // Logic: Members joined in current year / Total members at start of year
+                const currentYear = new Date().getFullYear();
+                const newMembersThisYear = members.filter(m => new Date(m.joinDate).getFullYear() === currentYear).length;
+                const previousMembers = members.length - newMembersThisYear;
+                const growthRate = previousMembers > 0 
+                    ? (newMembersThisYear / previousMembers) * 100 
+                    : (members.length > 0 ? 100 : 0);
+
+                setStats({
+                    visitors: totalVisitors,
+                    revenue: totalRevenue,
+                    activeMembers: activeMembers,
+                    growthRate: growthRate
+                });
+
+            } catch (error) {
+                console.error("Error loading dashboard stats", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
     return (
         <div>
             <Header title="Dashboard" />
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <StatCard title="Total Visitors (Today)" value="1,248" icon={TicketIcon} />
-                <StatCard title="Revenue (YTD)" value="$1,450,200" icon={CurrencyDollarIcon} />
-                <StatCard title="Active Members" value="5,683" icon={UsersIcon} />
-                <StatCard title="Growth Rate" value="+12.5%" icon={TrendingUpIcon} />
+                <StatCard 
+                    title="Total Visitors (YTD)" 
+                    value={loading ? "..." : stats.visitors.toLocaleString()} 
+                    icon={TicketIcon} 
+                />
+                <StatCard 
+                    title="Revenue (YTD)" 
+                    value={loading ? "..." : `$${stats.revenue.toLocaleString()}`} 
+                    icon={CurrencyDollarIcon} 
+                />
+                <StatCard 
+                    title="Active Members" 
+                    value={loading ? "..." : stats.activeMembers.toLocaleString()} 
+                    icon={UsersIcon} 
+                />
+                <StatCard 
+                    title="Member Growth (YTD)" 
+                    value={loading ? "..." : `+${stats.growthRate.toFixed(1)}%`} 
+                    icon={TrendingUpIcon} 
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

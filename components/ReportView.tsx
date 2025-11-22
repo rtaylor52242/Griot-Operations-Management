@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ArrowLeftIcon } from './icons';
+import { logActivity } from '../services/activityService';
 
 interface ReportViewProps {
     title: string;
@@ -255,7 +256,6 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                 return (
                     <div className="h-64 bg-gray-50 rounded border border-gray-200 p-4">
                         <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                             {/* Grid lines */}
                              {[0, 0.25, 0.5, 0.75, 1].map(ratio => {
                                  const y = getSafeY(ratio * maxVal, maxVal);
                                  return <line key={ratio} x1={safePaddingX} y1={y} x2={100-safePaddingX} y2={y} stroke="#e5e7eb" strokeWidth="0.5" />;
@@ -353,7 +353,6 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                              )}
                             {chartValues.map((val, i) => {
                                 const x = getSafeX(i, chartValues.length);
-                                // Bubble size relative to value, capped at reasonable display size
                                 const r = Math.max(2, (val / maxVal) * 15);
                                 return (
                                     <g key={i}>
@@ -435,12 +434,9 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                                     const startPercent = cumulativePercent;
                                     const endPercent = cumulativePercent + percent;
                                     cumulativePercent += percent;
-                                    
-                                    // Determine label position (midpoint of slice)
                                     const midPercent = startPercent + percent / 2;
                                     const labelX = Math.cos(2 * Math.PI * midPercent - Math.PI / 2) * 0.7;
                                     const labelY = Math.sin(2 * Math.PI * midPercent - Math.PI / 2) * 0.7;
-
                                     const color = colors[i % colors.length];
 
                                     return (
@@ -495,6 +491,7 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
             link.click();
             document.body.removeChild(link);
         }
+        logActivity('Report Exported', `Downloaded CSV for report: ${title}`, 'system');
     };
 
     return (
@@ -509,7 +506,6 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                 <h1 className="text-3xl font-bold text-gray-800">{title}</h1>
             </div>
 
-            {/* Chart Section */}
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-gray-700 mb-2 sm:mb-0">
@@ -584,7 +580,6 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
 
                 {renderChart()}
                 
-                {/* X-Axis Labels for Non-Heatmap/Pie */}
                 {chartType !== 'Heatmap' && chartType !== 'Pie' && (
                     <div className="flex justify-around mt-2 px-4 text-xs text-gray-500 overflow-hidden">
                         {chartLabels.map((l, i) => (
@@ -592,7 +587,6 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                         ))}
                     </div>
                 )}
-                {/* Legend for Pie */}
                 {chartType === 'Pie' && (
                      <div className="flex flex-wrap justify-center mt-4 gap-4">
                          {chartLabels.map((l, i) => (
@@ -605,7 +599,6 @@ const ReportView: React.FC<ReportViewProps> = ({ title, onBack }) => {
                 )}
             </div>
 
-            {/* Data Table */}
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-gray-800">Detailed Data</h2>

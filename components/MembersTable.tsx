@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Member, MembershipTier, MemberStatus } from '../types';
+import { Member, MembershipTier, MemberStatus, MemberRole } from '../types';
 import { SearchIcon } from './icons';
 
 interface MembersTableProps {
@@ -17,7 +17,13 @@ const statusColors: { [key in MemberStatus]: string } = {
     [MemberStatus.Cancelled]: 'bg-red-100 text-red-800',
 };
 
-type SortKey = 'name' | 'email' | 'tier' | 'status' | 'joinDate';
+const roleColors: { [key in MemberRole]: string } = {
+    [MemberRole.Admin]: 'text-purple-700 bg-purple-50 ring-purple-600/20',
+    [MemberRole.Member]: 'text-blue-700 bg-blue-50 ring-blue-600/20',
+    [MemberRole.Guest]: 'text-gray-600 bg-gray-50 ring-gray-500/10',
+};
+
+type SortKey = 'name' | 'email' | 'tier' | 'status' | 'joinDate' | 'role';
 type SortDirection = 'asc' | 'desc';
 
 interface TablePreferences {
@@ -96,6 +102,10 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
                     aValue = a.status;
                     bValue = b.status;
                     break;
+                case 'role':
+                    aValue = a.role;
+                    bValue = b.role;
+                    break;
                 case 'joinDate':
                     aValue = new Date(a.joinDate).getTime();
                     bValue = new Date(b.joinDate).getTime();
@@ -162,6 +172,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
                             {renderHeader('Email', 'email')}
                             {renderHeader('Tier', 'tier')}
                             {renderHeader('Status', 'status')}
+                            {renderHeader('Role', 'role')}
                             {renderHeader('Join Date', 'joinDate')}
                             <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                         </tr>
@@ -175,6 +186,11 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[member.status]}`}>
                                         {member.status}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${roleColors[member.role]}`}>
+                                        {member.role}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(member.joinDate).toLocaleDateString()}</td>
@@ -200,7 +216,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
                         ))}
                         {filteredAndSortedMembers.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
+                                <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500">
                                     No members found matching your filters.
                                 </td>
                             </tr>

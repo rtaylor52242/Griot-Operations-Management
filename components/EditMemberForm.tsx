@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Member, MembershipTier, MemberStatus } from '../types';
+import { Member, MembershipTier, MemberStatus, MemberRole } from '../types';
 
 interface EditMemberFormProps {
     member: Member;
@@ -100,6 +100,27 @@ const EditMemberForm: React.FC<EditMemberFormProps> = ({ member, tiers, onSave, 
                                 {tiers.map((tier) => (
                                     <option key={tier.id} value={tier.id}>
                                         {tier.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                        <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                            User Role
+                        </label>
+                        <div className="mt-1">
+                            <select
+                                id="role"
+                                name="role"
+                                value={formData.role}
+                                onChange={handleChange}
+                                className="shadow-sm focus:ring-brand-primary focus:border-brand-primary block w-full sm:text-sm border-gray-300 rounded-md p-2 border bg-white text-black"
+                            >
+                                {Object.values(MemberRole).map((role) => (
+                                    <option key={role} value={role}>
+                                        {role}
                                     </option>
                                 ))}
                             </select>

@@ -5,26 +5,31 @@ import StatCard from './StatCard';
 import AddCampaignForm from './AddCampaignForm';
 import LogDonationForm from './LogDonationForm';
 import ManageCampaign from './ManageCampaign';
-import { FundraisingIcon, TrendingUpIcon, UsersIcon, SearchIcon, EyeIcon } from './icons';
-import { Campaign } from '../types';
+import { FundraisingIcon, TrendingUpIcon, UsersIcon, SearchIcon, EyeIcon, DocumentTextIcon } from './icons';
+import { Campaign, Donation } from '../types';
 import { 
     getCampaigns, 
+    getDonations,
     addCampaignService, 
     updateCampaignService, 
     deleteCampaignService, 
     logDonationService 
 } from '../services/fundraisingService';
+import { logActivity } from '../services/activityService';
 
 interface FundraisingProps {
     initialView?: string;
 }
 
-type SortKey = 'name' | 'goal' | 'raised' | 'status' | 'progress';
+type SortKey = 'name' | 'goal' | 'raised' | 'status' | 'progress' | 'date' | 'amount' | 'donorName';
 type SortDirection = 'asc' | 'desc';
 
 const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     const [view, setView] = useState<'list' | 'add' | 'log-donation' | 'manage'>((initialView as any) || 'list');
+    const [activeTab, setActiveTab] = useState<'campaigns' | 'donations'>('campaigns');
+    
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [donations, setDonations] = useState<Donation[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
     
@@ -35,17 +40,18 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     // Sorting and Filtering State
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
-    const [sortKey, setSortKey] = useState<SortKey>('status'); // Default sort
+    const [sortKey, setSortKey] = useState<SortKey>('status'); // Default sort for campaigns
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const data = await getCampaigns();
-                setCampaigns(data);
+                const [campaignsData, donationsData] = await Promise.all([getCampaigns(), getDonations()]);
+                setCampaigns(campaignsData);
+                setDonations(donationsData);
             } catch (error) {
-                console.error("Failed to fetch campaigns", error);
+                console.error("Failed to fetch fundraising data", error);
             } finally {
                 setLoading(false);
             }
@@ -65,21 +71,19 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
         };
         await addCampaignService(newCampaign);
         setCampaigns(prev => [newCampaign, ...prev]);
+        logActivity('Campaign Created', `Launched new campaign: ${data.name}`, 'fundraising');
         setView('list');
     };
 
-    const handleLogDonation = async (data: { amount: number; campaignId: number }) => {
-        await logDonationService(data.amount, data.campaignId);
-        setCampaigns(prev => prev.map(c => {
-            if (c.id === data.campaignId) {
-                return {
-                    ...c,
-                    raised: c.raised + data.amount,
-                    donors: c.donors + 1
-                };
-            }
-            return c;
-        }));
+    const handleLogDonation = async (data: { amount: number; campaignId: number; donorName: string; paymentMethod: string; date: string; notes?: string }) => {
+        await logDonationService(data.amount, data.campaignId, data.donorName, data.paymentMethod, data.notes, data.date);
+        
+        // Refresh data
+        const [campaignsData, donationsData] = await Promise.all([getCampaigns(), getDonations()]);
+        setCampaigns(campaignsData);
+        setDonations(donationsData);
+        
+        logActivity('Donation Received', `$${data.amount} from ${data.donorName}`, 'fundraising');
         setView('list');
     };
 
@@ -94,7 +98,6 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
 
     const handleUnhideCampaign = (id: number) => {
         setHiddenCampaignIds(prev => prev.filter(hiddenId => hiddenId !== id));
-        // If no more hidden items, switch back to default view
         if (hiddenCampaignIds.length === 1) {
             setShowHidden(false);
         }
@@ -104,15 +107,19 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
         if (!window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
             return;
         }
+        
+        const campaign = campaigns.find(c => c.id === id);
 
         // Optimistic update
         setCampaigns(prev => prev.filter(c => c.id !== id));
 
         try {
             await deleteCampaignService(id);
+            if (campaign) {
+                logActivity('Campaign Deleted', `Deleted campaign: ${campaign.name}`, 'fundraising');
+            }
         } catch (error) {
             console.error("Failed to delete campaign", error);
-            // Re-fetch if deletion fails to sync state
             const data = await getCampaigns();
             setCampaigns(data);
             alert("Failed to delete campaign. Data has been refreshed.");
@@ -122,6 +129,7 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     const handleSaveCampaign = async (updatedCampaign: Campaign) => {
         await updateCampaignService(updatedCampaign);
         setCampaigns(prev => prev.map(c => c.id === updatedCampaign.id ? updatedCampaign : c));
+        logActivity('Campaign Updated', `Updated campaign details: ${updatedCampaign.name}`, 'fundraising');
         setView('list');
         setSelectedCampaign(null);
     };
@@ -165,10 +173,41 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
         });
     }, [campaigns, searchTerm, statusFilter, sortKey, sortDirection, hiddenCampaignIds, showHidden]);
 
+    const filteredAndSortedDonations = useMemo(() => {
+        let result = donations.filter(d => {
+             const matchesSearch = d.donorName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                   d.campaignName.toLowerCase().includes(searchTerm.toLowerCase());
+             return matchesSearch;
+        });
+
+        return result.sort((a, b) => {
+            let aValue: any = a[sortKey as keyof Donation];
+            let bValue: any = b[sortKey as keyof Donation];
+
+            // Fallback for sorting keys not in Donation
+            if (aValue === undefined) aValue = '';
+            if (bValue === undefined) bValue = '';
+
+            if (sortKey === 'date') {
+                aValue = new Date(a.date).getTime();
+                bValue = new Date(b.date).getTime();
+            }
+
+            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [donations, searchTerm, sortKey, sortDirection]);
+
     const renderSortIcon = (key: SortKey) => {
         if (sortKey !== key) return <span className="ml-1 text-gray-400 opacity-0 group-hover:opacity-50">↕</span>;
         return <span className="ml-1 text-brand-primary">{sortDirection === 'asc' ? '↑' : '↓'}</span>;
     };
+
+    // Calculate Statistics
+    const totalRaised = campaigns.reduce((acc, c) => acc + c.raised, 0);
+    const totalDonors = campaigns.reduce((acc, c) => acc + c.donors, 0);
+    const avgDonation = totalDonors > 0 ? totalRaised / totalDonors : 0;
 
     return (
         <div>
@@ -188,192 +227,306 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
                     </Header>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <StatCard title="Total Raised (YTD)" value={`$${campaigns.reduce((acc, c) => acc + c.raised, 0).toLocaleString()}`} icon={FundraisingIcon} />
-                        <StatCard title="Total Donors (YTD)" value={campaigns.reduce((acc, c) => acc + c.donors, 0).toLocaleString()} icon={UsersIcon} />
-                        <StatCard title="Avg. Donation" value="$599" icon={TrendingUpIcon} />
+                        <StatCard title="Total Raised (YTD)" value={`$${totalRaised.toLocaleString()}`} icon={FundraisingIcon} />
+                        <StatCard title="Total Donors (YTD)" value={totalDonors.toLocaleString()} icon={UsersIcon} />
+                        <StatCard title="Avg. Donation" value={`$${Math.round(avgDonation).toLocaleString()}`} icon={TrendingUpIcon} />
                     </div>
 
-                    {/* Filter and Search Bar */}
-                    <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
-                        <div className="flex gap-4 flex-grow w-full sm:w-auto">
-                            <div className="relative flex-grow">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <SearchIcon className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Search campaigns..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                                />
-                            </div>
-                            <div className="w-full sm:w-48">
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
-                                >
-                                    <option value="All">All Statuses</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Ending Soon">Ending Soon</option>
-                                    <option value="Completed">Completed</option>
-                                    <option value="Paused">Paused</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {hiddenCampaignIds.length > 0 && (
+                    {/* Tabs */}
+                    <div className="mb-6 border-b border-gray-200">
+                        <nav className="-mb-px flex space-x-8">
                             <button
-                                onClick={() => setShowHidden(!showHidden)}
-                                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showHidden ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
+                                onClick={() => setActiveTab('campaigns')}
+                                className={`${
+                                    activeTab === 'campaigns'
+                                        ? 'border-brand-primary text-brand-primary'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
                             >
-                                <EyeIcon className="w-4 h-4 mr-2" />
-                                {showHidden ? 'View Active Campaigns' : `View Hidden (${hiddenCampaignIds.length})`}
+                                Campaigns
                             </button>
-                        )}
+                            <button
+                                onClick={() => setActiveTab('donations')}
+                                className={`${
+                                    activeTab === 'donations'
+                                        ? 'border-brand-primary text-brand-primary'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                            >
+                                Donation Log
+                            </button>
+                        </nav>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                            <h2 className="text-lg font-semibold text-gray-800">
-                                {showHidden ? 'Hidden Campaigns' : 'Active Campaigns'}
-                            </h2>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
-                                            onClick={() => handleSort('name')}
+                    {activeTab === 'campaigns' ? (
+                        <>
+                            {/* Filter and Search Bar */}
+                            <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+                                <div className="flex gap-4 flex-grow w-full sm:w-auto">
+                                    <div className="relative flex-grow">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <SearchIcon className="h-5 w-5 text-gray-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Search campaigns..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                        />
+                                    </div>
+                                    <div className="w-full sm:w-48">
+                                        <select
+                                            value={statusFilter}
+                                            onChange={(e) => setStatusFilter(e.target.value)}
+                                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
                                         >
-                                            <div className="flex items-center">Campaign Name {renderSortIcon('name')}</div>
-                                        </th>
-                                        <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
-                                            onClick={() => handleSort('goal')}
-                                        >
-                                                <div className="flex items-center">Goal {renderSortIcon('goal')}</div>
-                                        </th>
-                                        <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
-                                            onClick={() => handleSort('raised')}
-                                        >
-                                                <div className="flex items-center">Raised {renderSortIcon('raised')}</div>
-                                        </th>
-                                        <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
-                                            onClick={() => handleSort('progress')}
-                                        >
-                                                <div className="flex items-center">Progress {renderSortIcon('progress')}</div>
-                                        </th>
-                                        <th 
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
-                                            onClick={() => handleSort('status')}
-                                        >
-                                                <div className="flex items-center">Status {renderSortIcon('status')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
-                                                Loading campaigns...
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                    <>
-                                    {filteredAndSortedCampaigns.map((campaign) => {
-                                        const percentage = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
-                                        return (
-                                            <tr key={campaign.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">{campaign.name}</div>
-                                                    <div className="text-sm text-gray-500">{campaign.donors} Donors</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    ${campaign.goal.toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                                    ${campaign.raised.toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap align-middle">
-                                                    <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-xs">
-                                                        <div 
-                                                            className={`bg-brand-primary h-2.5 rounded-full`} 
-                                                            style={{ width: `${percentage}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="text-xs text-gray-500 mt-1 block">{percentage}%</span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                        ${campaign.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                                                            campaign.status === 'Ending Soon' ? 'bg-yellow-100 text-yellow-800' : 
-                                                            'bg-blue-100 text-blue-800'}`}>
-                                                        {campaign.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => { 
-                                                            e.preventDefault(); 
-                                                            handleManageClick(campaign); 
-                                                        }}
-                                                        className="text-brand-primary hover:text-brand-secondary mr-4 font-medium"
-                                                    >
-                                                        Manage
-                                                    </button>
-                                                    {showHidden ? (
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => handleUnhideCampaign(campaign.id)}
-                                                            className="text-gray-500 hover:text-gray-700 mr-4 font-medium"
-                                                        >
-                                                            Unhide
-                                                        </button>
-                                                    ) : (
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => handleHideCampaign(campaign.id)}
-                                                            className="text-gray-500 hover:text-gray-700 mr-4 font-medium"
-                                                        >
-                                                            Hide
-                                                        </button>
-                                                    )}
-                                                    <button 
-                                                        type="button"
-                                                        onClick={(e) => { 
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleDeleteCampaign(campaign.id); 
-                                                        }}
-                                                        className="text-red-600 hover:text-red-900 font-medium inline-block p-1 rounded hover:bg-red-50 transition-colors"
-                                                        aria-label={`Delete ${campaign.name}`}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </td>
+                                            <option value="All">All Statuses</option>
+                                            <option value="Active">Active</option>
+                                            <option value="Ending Soon">Ending Soon</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="Paused">Paused</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {hiddenCampaignIds.length > 0 && (
+                                    <button
+                                        onClick={() => setShowHidden(!showHidden)}
+                                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showHidden ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
+                                    >
+                                        <EyeIcon className="w-4 h-4 mr-2" />
+                                        {showHidden ? 'View Active Campaigns' : `View Hidden (${hiddenCampaignIds.length})`}
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                    <h2 className="text-lg font-semibold text-gray-800">
+                                        {showHidden ? 'Hidden Campaigns' : 'Active Campaigns'}
+                                    </h2>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                                    onClick={() => handleSort('name')}
+                                                >
+                                                    <div className="flex items-center">Campaign Name {renderSortIcon('name')}</div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                                    onClick={() => handleSort('goal')}
+                                                >
+                                                        <div className="flex items-center">Goal {renderSortIcon('goal')}</div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                                    onClick={() => handleSort('raised')}
+                                                >
+                                                        <div className="flex items-center">Raised {renderSortIcon('raised')}</div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                                    onClick={() => handleSort('progress')}
+                                                >
+                                                        <div className="flex items-center">Progress {renderSortIcon('progress')}</div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                                    onClick={() => handleSort('status')}
+                                                >
+                                                        <div className="flex items-center">Status {renderSortIcon('status')}</div>
+                                                </th>
+                                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                             </tr>
-                                        );
-                                    })}
-                                    {filteredAndSortedCampaigns.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
-                                                {showHidden ? 'No hidden campaigns found.' : 'No active campaigns found.'}
-                                            </td>
-                                        </tr>
-                                    )}
-                                    </>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {loading ? (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
+                                                        Loading campaigns...
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                            <>
+                                            {filteredAndSortedCampaigns.map((campaign) => {
+                                                const percentage = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
+                                                return (
+                                                    <tr key={campaign.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="text-sm font-medium text-gray-900">{campaign.name}</div>
+                                                            <div className="text-sm text-gray-500">{campaign.donors} Donors</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            ${campaign.goal.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                                            ${campaign.raised.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap align-middle">
+                                                            <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-xs">
+                                                                <div 
+                                                                    className={`bg-brand-primary h-2.5 rounded-full`} 
+                                                                    style={{ width: `${percentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="text-xs text-gray-500 mt-1 block">{percentage}%</span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                                ${campaign.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                                                                    campaign.status === 'Ending Soon' ? 'bg-yellow-100 text-yellow-800' : 
+                                                                    'bg-blue-100 text-blue-800'}`}>
+                                                                {campaign.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { 
+                                                                    e.preventDefault(); 
+                                                                    handleManageClick(campaign); 
+                                                                }}
+                                                                className="text-brand-primary hover:text-brand-secondary mr-4 font-medium"
+                                                            >
+                                                                Manage
+                                                            </button>
+                                                            {showHidden ? (
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => handleUnhideCampaign(campaign.id)}
+                                                                    className="text-gray-500 hover:text-gray-700 mr-4 font-medium"
+                                                                >
+                                                                    Unhide
+                                                                </button>
+                                                            ) : (
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => handleHideCampaign(campaign.id)}
+                                                                    className="text-gray-500 hover:text-gray-700 mr-4 font-medium"
+                                                                >
+                                                                    Hide
+                                                                </button>
+                                                            )}
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => { 
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    handleDeleteCampaign(campaign.id); 
+                                                                }}
+                                                                className="text-red-600 hover:text-red-900 font-medium inline-block p-1 rounded hover:bg-red-50 transition-colors"
+                                                                aria-label={`Delete ${campaign.name}`}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {filteredAndSortedCampaigns.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
+                                                        {showHidden ? 'No hidden campaigns found.' : 'No active campaigns found.'}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            </>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* Donations Log View */}
+                            <div className="mb-6">
+                                <div className="relative max-w-lg">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <SearchIcon className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by donor or campaign..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                    onClick={() => handleSort('date')}
+                                                >
+                                                     <div className="flex items-center">Date {renderSortIcon('date')}</div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                    onClick={() => handleSort('donorName')}
+                                                >
+                                                     <div className="flex items-center">Donor {renderSortIcon('donorName')}</div>
+                                                </th>
+                                                <th 
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                    onClick={() => handleSort('amount')}
+                                                >
+                                                     <div className="flex items-center">Amount {renderSortIcon('amount')}</div>
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Campaign
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Payment Method
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {loading ? (
+                                                 <tr>
+                                                    <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500">Loading donations...</td>
+                                                </tr>
+                                            ) : filteredAndSortedDonations.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500">No donations found.</td>
+                                                </tr>
+                                            ) : (
+                                                filteredAndSortedDonations.map((donation) => (
+                                                    <tr key={donation.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {new Date(donation.date).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                            {donation.donorName}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
+                                                            ${donation.amount.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {donation.campaignName}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {donation.paymentMethod}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </>
             )}
             

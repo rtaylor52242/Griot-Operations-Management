@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
+import { User } from '../types';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (user: User) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -12,9 +13,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication - Allow admin/password OR empty credentials
-    if ((username === 'admin' && password === 'password') || (username.trim() === '' && password.trim() === '')) {
-      onLogin();
+    
+    // Mock User Database logic
+    let user: User | null = null;
+
+    if (username === 'admin' && password === 'admin') {
+        // Test Admin User
+        user = { username: 'admin', name: 'Administrator', role: 'Admin' };
+    } else if (username === 'guest' && password === 'guest') {
+        // Test Guest User
+        user = { username: 'guest', name: 'Guest User', role: 'Guest' };
+    } else if (username === 'member' && password === 'member') {
+        // Test Member User
+        user = { username: 'member', name: 'Test Member', role: 'Member User' };
+    } else if (username === 'sarah' && password === 'password') {
+        user = { username: 'sarah', name: 'Sarah Smith', role: 'Box Office Manager' };
+    } else if (username === 'john' && password === 'password') {
+        user = { username: 'john', name: 'John Donor', role: 'Fundraising Lead' };
+    }
+
+    if (user) {
+      onLogin(user);
     } else {
       setError('Invalid username or password');
     }
@@ -40,7 +59,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         Username
                     </label>
                     <input
-                        className="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition bg-white"
+                        className="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition bg-white text-black"
                         id="username"
                         type="text"
                         placeholder="Enter your username"
@@ -53,7 +72,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         Password
                     </label>
                     <input
-                        className="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition bg-white"
+                        className="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition bg-white text-black"
                         id="password"
                         type="password"
                         placeholder="Enter your password"
@@ -61,7 +80,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         onChange={(e) => setPassword(e.target.value)}
                     />
                     <div className="text-right">
-                         <p className="text-gray-400 text-xs">Hint: Use 'admin' / 'password' or leave blank</p>
+                         <p className="text-gray-400 text-xs">Test Credentials: admin/admin, member/member, guest/guest</p>
                     </div>
                 </div>
                 <div className="flex items-center justify-between">
