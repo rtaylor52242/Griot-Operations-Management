@@ -7,11 +7,20 @@ import TierList from './TierList';
 import AddMemberForm from './AddMemberForm';
 import EditMemberForm from './EditMemberForm';
 import EditTierForm from './EditTierForm';
+import AddTierForm from './AddTierForm';
 import { UsersIcon, ChartBarIcon, TicketIcon } from './icons';
-import { getMembers, getTiers } from '../services/membershipService';
+import { 
+    getMembers, 
+    getTiers, 
+    addMemberService, 
+    updateMemberService, 
+    deleteMemberService, 
+    addTierService, 
+    updateTierService 
+} from '../services/membershipService';
 import { Member, MembershipTier, MemberStatus } from '../types';
 
-type View = 'members' | 'tiers' | 'add-member' | 'edit-member' | 'edit-tier';
+type View = 'members' | 'tiers' | 'add-member' | 'edit-member' | 'edit-tier' | 'add-tier';
 
 interface MembershipDashboardProps {
     initialView?: string;
@@ -42,7 +51,7 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
         fetchData();
     }, []);
 
-    const handleAddMember = (data: { firstName: string; lastName: string; email: string; tierId: string }) => {
+    const handleAddMember = async (data: { firstName: string; lastName: string; email: string; tierId: string }) => {
         const newMember: Member = {
             id: `m${Date.now()}`,
             firstName: data.firstName,
@@ -53,18 +62,40 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
             joinDate: new Date().toISOString().split('T')[0],
             renewalDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
         };
-        setMembers([newMember, ...members]);
+        await addMemberService(newMember);
+        setMembers(prev => [newMember, ...prev]);
         setView('members');
     };
 
-    const handleUpdateMember = (updatedMember: Member) => {
-        setMembers(members.map(m => m.id === updatedMember.id ? updatedMember : m));
+    const handleAddTier = async (data: Omit<MembershipTier, 'id' | 'memberCount' | 'benefits'>) => {
+        const newTier: MembershipTier = {
+            id: `t${Date.now()}`,
+            ...data,
+            memberCount: 0,
+            benefits: [], // Initialize with empty benefits
+        };
+        await addTierService(newTier);
+        setTiers(prev => [...prev, newTier]);
+        setView('tiers');
+    };
+
+    const handleUpdateMember = async (updatedMember: Member) => {
+        await updateMemberService(updatedMember);
+        setMembers(prev => prev.map(m => m.id === updatedMember.id ? updatedMember : m));
         setView('members');
         setSelectedMember(null);
     };
 
-    const handleUpdateTier = (updatedTier: MembershipTier) => {
-        setTiers(tiers.map(t => t.id === updatedTier.id ? updatedTier : t));
+    const handleDeleteMember = async (memberId: string) => {
+        if (window.confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
+            await deleteMemberService(memberId);
+            setMembers(prev => prev.filter(m => m.id !== memberId));
+        }
+    };
+
+    const handleUpdateTier = async (updatedTier: MembershipTier) => {
+        await updateTierService(updatedTier);
+        setTiers(prev => prev.map(t => t.id === updatedTier.id ? updatedTier : t));
         setView('tiers');
         setSelectedTier(null);
     };
@@ -87,16 +118,29 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
             case 'add-member': return "Add New Member";
             case 'edit-member': return "View / Edit Member";
             case 'edit-tier': return "Edit Membership Tier";
+            case 'add-tier': return "Add Membership Tier";
             default: return "Membership Management";
         }
     };
+
+    const getButtonConfig = () => {
+        if (view === 'members') {
+            return { text: "+ Add Member", action: () => setView('add-member') };
+        }
+        if (view === 'tiers') {
+            return { text: "+ Add Tier", action: () => setView('add-tier') };
+        }
+        return { text: undefined, action: undefined };
+    };
+
+    const buttonConfig = getButtonConfig();
 
     return (
         <div>
             <Header 
                 title={getTitle()} 
-                buttonText={view === 'members' || view === 'tiers' ? "+ Add Member" : undefined} 
-                onButtonClick={view === 'members' || view === 'tiers' ? () => setView('add-member') : undefined} 
+                buttonText={buttonConfig.text} 
+                onButtonClick={buttonConfig.action} 
             />
 
             {(view === 'members' || view === 'tiers') && (
@@ -109,6 +153,8 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
             
             {view === 'add-member' ? (
                 <AddMemberForm tiers={tiers} onSave={handleAddMember} onCancel={() => setView('members')} />
+            ) : view === 'add-tier' ? (
+                <AddTierForm onSave={handleAddTier} onCancel={() => setView('tiers')} />
             ) : view === 'edit-member' && selectedMember ? (
                 <EditMemberForm 
                     member={selectedMember} 
@@ -147,7 +193,7 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
                                 <p className="text-gray-500">Loading data...</p>
                             </div>
                         ) : view === 'members' ? (
-                            <MembersTable members={members} tiers={tiers} onEdit={openEditMember} />
+                            <MembersTable members={members} tiers={tiers} onEdit={openEditMember} onDelete={handleDeleteMember} />
                         ) : (
                             <TierList tiers={tiers} onEdit={openEditTier} />
                         )}

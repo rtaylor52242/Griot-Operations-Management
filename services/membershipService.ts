@@ -10,7 +10,7 @@ const benefits: { [key: string]: MembershipBenefit } = {
   directorCircle: { id: 'b6', name: 'Director\'s Circle Events', description: 'Invitations to exclusive events with the museum director.' },
 };
 
-const mockTiers: MembershipTier[] = [
+let tiers: MembershipTier[] = [
   {
     id: 't1',
     name: 'Individual',
@@ -49,7 +49,7 @@ const mockTiers: MembershipTier[] = [
   },
 ];
 
-const mockMembers: Member[] = [
+let members: Member[] = [
   { id: 'm1', firstName: 'Alice', lastName: 'Johnson', email: 'alice.j@example.com', tierId: 't2', status: MemberStatus.Active, joinDate: '2023-05-15', renewalDate: '2025-05-15' },
   { id: 'm2', firstName: 'Bob', lastName: 'Smith', email: 'bob.smith@example.com', tierId: 't1', status: MemberStatus.Active, joinDate: '2023-01-20', renewalDate: '2025-01-20' },
   { id: 'm3', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.b@example.com', tierId: 't3', status: MemberStatus.Active, joinDate: '2022-11-30', renewalDate: '2024-11-30' },
@@ -63,13 +63,34 @@ const mockMembers: Member[] = [
 ];
 
 export const getTiers = async (): Promise<MembershipTier[]> => {
-  return new Promise(resolve => setTimeout(() => resolve(mockTiers), 500));
+  return new Promise(resolve => setTimeout(() => resolve([...tiers]), 500));
 };
 
 export const getMembers = async (): Promise<Member[]> => {
-  return new Promise(resolve => setTimeout(() => resolve(mockMembers), 500));
+  return new Promise(resolve => setTimeout(() => resolve([...members]), 500));
 };
 
 export const getTierById = (tierId: string): MembershipTier | undefined => {
-    return mockTiers.find(t => t.id === tierId);
+    return tiers.find(t => t.id === tierId);
+};
+
+// Mutations to persist changes during the session
+export const addMemberService = async (member: Member): Promise<void> => {
+    members = [member, ...members];
+};
+
+export const updateMemberService = async (member: Member): Promise<void> => {
+    members = members.map(m => m.id === member.id ? member : m);
+};
+
+export const deleteMemberService = async (memberId: string): Promise<void> => {
+    members = members.filter(m => m.id !== memberId);
+};
+
+export const addTierService = async (tier: MembershipTier): Promise<void> => {
+    tiers = [...tiers, tier];
+};
+
+export const updateTierService = async (tier: MembershipTier): Promise<void> => {
+    tiers = tiers.map(t => t.id === tier.id ? tier : t);
 };

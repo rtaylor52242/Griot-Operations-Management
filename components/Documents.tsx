@@ -1,7 +1,7 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import Header from './Header';
-import { CloudUploadIcon, TrashIcon, EyeIcon, DocumentTextIcon } from './icons';
+import { CloudUploadIcon, TrashIcon, EyeIcon, DocumentTextIcon, SearchIcon } from './icons';
 import { Doc } from '../types';
 
 interface DocumentsProps {
@@ -9,8 +9,17 @@ interface DocumentsProps {
     setDocs: React.Dispatch<React.SetStateAction<Doc[]>>;
 }
 
+type SortKey = 'name' | 'type' | 'size' | 'date';
+type SortDirection = 'asc' | 'desc';
+
 const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Sorting and Filtering State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState('All');
+    const [sortKey, setSortKey] = useState<SortKey>('date');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
     const handleUploadClick = () => {
         fileInputRef.current?.click();
@@ -22,7 +31,7 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
             const newDocs: Doc[] = Array.from(files).map((file: File) => ({
                 id: Math.random().toString(36).substr(2, 9),
                 name: file.name,
-                type: file.type,
+                type: file.type || 'Unknown',
                 size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
                 date: new Date().toISOString().split('T')[0],
                 url: URL.createObjectURL(file)
@@ -45,6 +54,52 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
         }
     };
 
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDirection('asc');
+        }
+    };
+
+    const parseSize = (sizeStr: string) => {
+        const num = parseFloat(sizeStr.replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? 0 : num;
+    };
+
+    const uniqueTypes = useMemo(() => {
+        const types = new Set(docs.map(d => d.type).filter(Boolean));
+        return ['All', ...Array.from(types)];
+    }, [docs]);
+
+    const filteredAndSortedDocs = useMemo(() => {
+        let result = docs.filter(doc => {
+            const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesType = typeFilter === 'All' || doc.type === typeFilter;
+            return matchesSearch && matchesType;
+        });
+
+        return result.sort((a, b) => {
+            let aValue: any = a[sortKey];
+            let bValue: any = b[sortKey];
+
+            if (sortKey === 'size') {
+                aValue = parseSize(a.size);
+                bValue = parseSize(b.size);
+            }
+
+            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [docs, searchTerm, typeFilter, sortKey, sortDirection]);
+
+    const renderSortIcon = (key: SortKey) => {
+        if (sortKey !== key) return <span className="ml-1 text-gray-400 opacity-0 group-hover:opacity-50">↕</span>;
+        return <span className="ml-1 text-brand-primary">{sortDirection === 'asc' ? '↑' : '↓'}</span>;
+    };
+
     return (
         <div>
             <Header title="Documents & Media" buttonText="Upload File" onButtonClick={handleUploadClick} />
@@ -56,19 +111,66 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
                 multiple 
             />
             
+            {/* Filter and Search Bar */}
+            <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-grow">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <SearchIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search documents..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                    />
+                </div>
+                <div className="w-full sm:w-48">
+                    <select
+                        value={typeFilter}
+                        onChange={(e) => setTypeFilter(e.target.value)}
+                        className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                    >
+                        {uniqueTypes.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                            <th 
+                                className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                onClick={() => handleSort('name')}
+                            >
+                                <div className="flex items-center">Name {renderSortIcon('name')}</div>
+                            </th>
+                            <th 
+                                className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                onClick={() => handleSort('type')}
+                            >
+                                <div className="flex items-center">Type {renderSortIcon('type')}</div>
+                            </th>
+                            <th 
+                                className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                onClick={() => handleSort('size')}
+                            >
+                                <div className="flex items-center">Size {renderSortIcon('size')}</div>
+                            </th>
+                            <th 
+                                className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                onClick={() => handleSort('date')}
+                            >
+                                <div className="flex items-center">Date Added {renderSortIcon('date')}</div>
+                            </th>
                             <th className="px-6 py-3 text-right text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {docs.map((doc) => (
+                        {filteredAndSortedDocs.map((doc) => (
                             <tr key={doc.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
@@ -89,10 +191,10 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
                                 </td>
                             </tr>
                         ))}
-                        {docs.length === 0 && (
+                        {filteredAndSortedDocs.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="px-6 py-10 text-center text-base text-gray-500">
-                                    No documents uploaded yet. Click "Upload File" to get started.
+                                    No documents found matching your filters.
                                 </td>
                             </tr>
                         )}

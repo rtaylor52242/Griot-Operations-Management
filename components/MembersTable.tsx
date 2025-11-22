@@ -7,6 +7,7 @@ interface MembersTableProps {
     members: Member[];
     tiers: MembershipTier[];
     onEdit: (member: Member) => void;
+    onDelete: (memberId: string) => void;
 }
 
 const statusColors: { [key in MemberStatus]: string } = {
@@ -28,7 +29,7 @@ interface TablePreferences {
 
 const STORAGE_KEY = 'griot_members_table_prefs';
 
-const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit }) => {
+const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onDelete }) => {
     // Initialize state from localStorage or defaults
     const [preferences, setPreferences] = useState<TablePreferences>(() => {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -162,7 +163,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit }) =
                             {renderHeader('Tier', 'tier')}
                             {renderHeader('Status', 'status')}
                             {renderHeader('Join Date', 'joinDate')}
-                            <th scope="col" className="relative px-6 py-3"><span className="sr-only">Edit</span></th>
+                            <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -180,9 +181,19 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit }) =
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button 
                                         onClick={() => onEdit(member)}
-                                        className="text-brand-primary hover:text-brand-secondary focus:outline-none font-semibold"
+                                        className="text-brand-primary hover:text-brand-secondary focus:outline-none font-semibold mr-4"
                                     >
                                         View / Edit
+                                    </button>
+                                    <button 
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onDelete(member.id);
+                                        }}
+                                        className="text-red-600 hover:text-red-900 focus:outline-none font-semibold"
+                                    >
+                                        Delete
                                     </button>
                                 </td>
                             </tr>

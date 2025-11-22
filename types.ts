@@ -41,3 +41,13 @@ export interface Doc {
     date: string;
     url: string;
 }
+
+export interface Campaign {
+    id: number;
+    name: string;
+    goal: number;
+    raised: number;
+    donors: number;
+    status: string;
+    description?: string;
+}

@@ -1,5 +1,4 @@
-
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import MembershipDashboard from './components/MembershipDashboard';
 import Dashboard from './components/Dashboard';
@@ -10,22 +9,35 @@ import Settings from './components/Settings';
 import ActivityLog from './components/ActivityLog';
 import Login from './components/Login';
 import Documents from './components/Documents';
+import ThemeSelector, { themes } from './components/ThemeSelector';
 import { Doc } from './types';
 
 // Lazy load HelpButton to isolate @google/genai dependency
 const HelpButton = React.lazy(() => import('./components/HelpButton'));
+const GriotChat = React.lazy(() => import('./components/GriotChat'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
   const [initialAction, setInitialAction] = useState<string | undefined>(undefined);
   
+  // Theme State
+  const [currentTheme, setCurrentTheme] = useState('default');
+
   // Lifted state for Documents to persist across navigation
   const [docs, setDocs] = useState<Doc[]>([
       { id: '1', name: 'Membership_Guidelines_2024.pdf', type: 'application/pdf', size: '2.4 MB', date: '2024-10-01', url: '#' },
       { id: '2', name: 'Exhibit_Layout_Plan_v2.jpg', type: 'image/jpeg', size: '4.1 MB', date: '2024-10-15', url: '#' },
       { id: '3', name: 'Fundraising_Deck_Q4.pptx', type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', size: '8.5 MB', date: '2024-10-20', url: '#' },
   ]);
+
+  // Apply Theme Effect
+  useEffect(() => {
+    const theme = themes.find(t => t.id === currentTheme) || themes[0];
+    const root = document.documentElement;
+    root.style.setProperty('--color-brand-primary', theme.primary);
+    root.style.setProperty('--color-brand-secondary', theme.secondary);
+  }, [currentTheme]);
 
   const handleNavigate = (view: string, action?: string) => {
     setInitialAction(action);
@@ -59,6 +71,16 @@ const App: React.FC = () => {
         return <ActivityLog />;
       case 'documents':
         return <Documents docs={docs} setDocs={setDocs} />;
+      case 'chat':
+          return (
+            <Suspense fallback={
+                <div className="flex justify-center items-center h-full">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-primary"></div>
+                </div>
+            }>
+                <GriotChat />
+            </Suspense>
+          );
       default:
         return <Dashboard onNavigate={handleNavigate} />;
     }
@@ -83,6 +105,7 @@ const App: React.FC = () => {
       <Suspense fallback={null}>
         <HelpButton currentView={currentView} />
       </Suspense>
+      <ThemeSelector currentTheme={currentTheme} onThemeSelect={setCurrentTheme} />
     </>
   );
 };

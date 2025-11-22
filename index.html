@@ -11,8 +11,8 @@
         theme: {
           extend: {
             colors: {
-              'brand-primary': '#4f46e5',
-              'brand-secondary': '#7c3aed',
+              'brand-primary': 'rgb(var(--color-brand-primary) / <alpha-value>)',
+              'brand-secondary': 'rgb(var(--color-brand-secondary) / <alpha-value>)',
               'gray-800': '#1f2937',
               'gray-700': '#374151',
               'gray-600': '#4b5563',
@@ -27,6 +27,13 @@
         }
       }
     </script>
+    <style>
+      :root {
+        /* Default Theme (Indigo) */
+        --color-brand-primary: 79 70 229;
+        --color-brand-secondary: 124 58 237;
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {

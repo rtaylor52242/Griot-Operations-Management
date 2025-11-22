@@ -1,37 +1,59 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
 import AddCampaignForm from './AddCampaignForm';
 import LogDonationForm from './LogDonationForm';
 import ManageCampaign from './ManageCampaign';
-import { FundraisingIcon, TrendingUpIcon, UsersIcon } from './icons';
-
-interface Campaign {
-    id: number;
-    name: string;
-    goal: number;
-    raised: number;
-    donors: number;
-    status: string;
-    description?: string;
-}
+import { FundraisingIcon, TrendingUpIcon, UsersIcon, SearchIcon, EyeIcon } from './icons';
+import { Campaign } from '../types';
+import { 
+    getCampaigns, 
+    addCampaignService, 
+    updateCampaignService, 
+    deleteCampaignService, 
+    logDonationService 
+} from '../services/fundraisingService';
 
 interface FundraisingProps {
     initialView?: string;
 }
 
+type SortKey = 'name' | 'goal' | 'raised' | 'status' | 'progress';
+type SortDirection = 'asc' | 'desc';
+
 const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     const [view, setView] = useState<'list' | 'add' | 'log-donation' | 'manage'>((initialView as any) || 'list');
-    const [campaigns, setCampaigns] = useState<Campaign[]>([
-        { id: 1, name: 'Annual Fund 2024', goal: 500000, raised: 325000, donors: 1240, status: 'Active', description: 'Supporting general operations and community outreach.' },
-        { id: 2, name: 'New Wing Capital Campaign', goal: 2000000, raised: 850000, donors: 450, status: 'Active', description: 'Raising funds for the new modern art wing construction.' },
-        { id: 3, name: 'Education Initiative', goal: 100000, raised: 98000, donors: 310, status: 'Ending Soon', description: 'Funding school trips and educational workshops.' },
-        { id: 4, name: 'Preservation Grant Match', goal: 50000, raised: 50000, donors: 125, status: 'Completed', description: 'Matching grant for artifact preservation.' },
-    ]);
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+    
+    // State for hiding individual rows
+    const [hiddenCampaignIds, setHiddenCampaignIds] = useState<number[]>([]);
+    const [showHidden, setShowHidden] = useState(false);
 
-    const handleAddCampaign = (data: { name: string; goal: number; description: string }) => {
+    // Sorting and Filtering State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [sortKey, setSortKey] = useState<SortKey>('status'); // Default sort
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const data = await getCampaigns();
+                setCampaigns(data);
+            } catch (error) {
+                console.error("Failed to fetch campaigns", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleAddCampaign = async (data: { name: string; goal: number; description: string }) => {
         const newCampaign: Campaign = {
             id: Date.now(),
             name: data.name,
@@ -41,12 +63,14 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
             status: 'Active',
             description: data.description
         };
-        setCampaigns([newCampaign, ...campaigns]);
+        await addCampaignService(newCampaign);
+        setCampaigns(prev => [newCampaign, ...prev]);
         setView('list');
     };
 
-    const handleLogDonation = (data: { amount: number; campaignId: number }) => {
-        setCampaigns(campaigns.map(c => {
+    const handleLogDonation = async (data: { amount: number; campaignId: number }) => {
+        await logDonationService(data.amount, data.campaignId);
+        setCampaigns(prev => prev.map(c => {
             if (c.id === data.campaignId) {
                 return {
                     ...c,
@@ -64,10 +88,86 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
         setView('manage');
     };
 
-    const handleSaveCampaign = (updatedCampaign: Campaign) => {
-        setCampaigns(campaigns.map(c => c.id === updatedCampaign.id ? updatedCampaign : c));
+    const handleHideCampaign = (id: number) => {
+        setHiddenCampaignIds(prev => [...prev, id]);
+    };
+
+    const handleUnhideCampaign = (id: number) => {
+        setHiddenCampaignIds(prev => prev.filter(hiddenId => hiddenId !== id));
+        // If no more hidden items, switch back to default view
+        if (hiddenCampaignIds.length === 1) {
+            setShowHidden(false);
+        }
+    };
+
+    const handleDeleteCampaign = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+            return;
+        }
+
+        // Optimistic update
+        setCampaigns(prev => prev.filter(c => c.id !== id));
+
+        try {
+            await deleteCampaignService(id);
+        } catch (error) {
+            console.error("Failed to delete campaign", error);
+            // Re-fetch if deletion fails to sync state
+            const data = await getCampaigns();
+            setCampaigns(data);
+            alert("Failed to delete campaign. Data has been refreshed.");
+        }
+    };
+
+    const handleSaveCampaign = async (updatedCampaign: Campaign) => {
+        await updateCampaignService(updatedCampaign);
+        setCampaigns(prev => prev.map(c => c.id === updatedCampaign.id ? updatedCampaign : c));
         setView('list');
         setSelectedCampaign(null);
+    };
+
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDirection('asc');
+        }
+    };
+
+    const filteredAndSortedCampaigns = useMemo(() => {
+        let result = campaigns.filter(c => {
+            // Logic for hidden/shown views
+            const isHidden = hiddenCampaignIds.includes(c.id);
+            if (showHidden) {
+                if (!isHidden) return false;
+            } else {
+                if (isHidden) return false;
+            }
+
+            const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+
+        return result.sort((a, b) => {
+            let aValue: any = a[sortKey as keyof Campaign];
+            let bValue: any = b[sortKey as keyof Campaign];
+
+            if (sortKey === 'progress') {
+                aValue = a.raised / a.goal;
+                bValue = b.raised / b.goal;
+            }
+
+            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [campaigns, searchTerm, statusFilter, sortKey, sortDirection, hiddenCampaignIds, showHidden]);
+
+    const renderSortIcon = (key: SortKey) => {
+        if (sortKey !== key) return <span className="ml-1 text-gray-400 opacity-0 group-hover:opacity-50">↕</span>;
+        return <span className="ml-1 text-brand-primary">{sortDirection === 'asc' ? '↑' : '↓'}</span>;
     };
 
     return (
@@ -93,25 +193,101 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
                         <StatCard title="Avg. Donation" value="$599" icon={TrendingUpIcon} />
                     </div>
 
+                    {/* Filter and Search Bar */}
+                    <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+                        <div className="flex gap-4 flex-grow w-full sm:w-auto">
+                            <div className="relative flex-grow">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search campaigns..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                />
+                            </div>
+                            <div className="w-full sm:w-48">
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                                >
+                                    <option value="All">All Statuses</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Ending Soon">Ending Soon</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Paused">Paused</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {hiddenCampaignIds.length > 0 && (
+                            <button
+                                onClick={() => setShowHidden(!showHidden)}
+                                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${showHidden ? 'bg-gray-200 text-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                <EyeIcon className="w-4 h-4 mr-2" />
+                                {showHidden ? 'View Active Campaigns' : `View Hidden (${hiddenCampaignIds.length})`}
+                            </button>
+                        )}
+                    </div>
+
                     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-lg font-semibold text-gray-800">Active Campaigns</h2>
+                        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                {showHidden ? 'Hidden Campaigns' : 'Active Campaigns'}
+                            </h2>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Name</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Goal</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raised</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th 
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            <div className="flex items-center">Campaign Name {renderSortIcon('name')}</div>
+                                        </th>
+                                        <th 
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                            onClick={() => handleSort('goal')}
+                                        >
+                                                <div className="flex items-center">Goal {renderSortIcon('goal')}</div>
+                                        </th>
+                                        <th 
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                            onClick={() => handleSort('raised')}
+                                        >
+                                                <div className="flex items-center">Raised {renderSortIcon('raised')}</div>
+                                        </th>
+                                        <th 
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                            onClick={() => handleSort('progress')}
+                                        >
+                                                <div className="flex items-center">Progress {renderSortIcon('progress')}</div>
+                                        </th>
+                                        <th 
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group hover:bg-gray-100"
+                                            onClick={() => handleSort('status')}
+                                        >
+                                                <div className="flex items-center">Status {renderSortIcon('status')}</div>
+                                        </th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {campaigns.map((campaign) => {
-                                        const percentage = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
+                                                Loading campaigns...
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                    <>
+                                    {filteredAndSortedCampaigns.map((campaign) => {
+                                        const percentage = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
                                         return (
                                             <tr key={campaign.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -136,23 +312,64 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                                         ${campaign.status === 'Active' ? 'bg-green-100 text-green-800' : 
-                                                          campaign.status === 'Ending Soon' ? 'bg-yellow-100 text-yellow-800' : 
-                                                          'bg-blue-100 text-blue-800'}`}>
+                                                            campaign.status === 'Ending Soon' ? 'bg-yellow-100 text-yellow-800' : 
+                                                            'bg-blue-100 text-blue-800'}`}>
                                                         {campaign.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <a 
-                                                        href="#" 
-                                                        onClick={(e) => { e.preventDefault(); handleManageClick(campaign); }}
-                                                        className="text-brand-primary hover:text-brand-secondary"
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { 
+                                                            e.preventDefault(); 
+                                                            handleManageClick(campaign); 
+                                                        }}
+                                                        className="text-brand-primary hover:text-brand-secondary mr-4 font-medium"
                                                     >
                                                         Manage
-                                                    </a>
+                                                    </button>
+                                                    {showHidden ? (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleUnhideCampaign(campaign.id)}
+                                                            className="text-gray-500 hover:text-gray-700 mr-4 font-medium"
+                                                        >
+                                                            Unhide
+                                                        </button>
+                                                    ) : (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleHideCampaign(campaign.id)}
+                                                            className="text-gray-500 hover:text-gray-700 mr-4 font-medium"
+                                                        >
+                                                            Hide
+                                                        </button>
+                                                    )}
+                                                    <button 
+                                                        type="button"
+                                                        onClick={(e) => { 
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            handleDeleteCampaign(campaign.id); 
+                                                        }}
+                                                        className="text-red-600 hover:text-red-900 font-medium inline-block p-1 rounded hover:bg-red-50 transition-colors"
+                                                        aria-label={`Delete ${campaign.name}`}
+                                                    >
+                                                        Delete
+                                                    </button>
                                                 </td>
                                             </tr>
                                         );
                                     })}
+                                    {filteredAndSortedCampaigns.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
+                                                {showHidden ? 'No hidden campaigns found.' : 'No active campaigns found.'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
