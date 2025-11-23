@@ -16,6 +16,9 @@ import ThemeSelector, { themes } from './components/ThemeSelector';
 import { Doc, User } from './types';
 import { logActivity, setCurrentUserSession } from './services/activityService';
 
+// Lazy load Chat to isolate heavy dependencies
+const GriotChat = React.lazy(() => import('./components/GriotChat'));
+
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -73,6 +76,10 @@ const App: React.FC = () => {
 
   }, [currentTheme, isDarkMode]);
 
+  useEffect(() => {
+      setCurrentUserSession(currentUser || { username: 'guest', name: 'Guest User', role: 'Guest' });
+  }, [currentUser]);
+
   const handleNavigate = (view: string, action?: string) => {
     setInitialAction(action);
     setCurrentView(view);
@@ -110,6 +117,12 @@ const App: React.FC = () => {
         return <ActivityLog />;
       case 'documents':
         return <Documents docs={docs} setDocs={setDocs} />;
+      case 'chat':
+        return (
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-primary"></div></div>}>
+                <GriotChat />
+            </Suspense>
+        );
       case 'help':
         return <Help />;
       case 'feedback':

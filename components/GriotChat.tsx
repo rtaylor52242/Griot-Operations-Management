@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Header from './Header';
 import { PaperAirplaneIcon, ChatIcon } from './icons';
-import { GoogleGenAI } from '@google/genai';
 
 interface Message {
     id: string;
@@ -48,6 +47,8 @@ const GriotChat: React.FC = () => {
                 throw new Error("API Key not found. Please check your environment configuration.");
             }
             
+            // Dynamic import to handle potential loading issues gracefully
+            const { GoogleGenAI } = await import('@google/genai');
             const ai = new GoogleGenAI({ apiKey });
             
             // Filter out the initial greeting from history to prevent confusion for the model
