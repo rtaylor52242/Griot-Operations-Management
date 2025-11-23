@@ -11,11 +11,10 @@ import ActivityLog from './components/ActivityLog';
 import Login from './components/Login';
 import Documents from './components/Documents';
 import Help from './components/Help';
+import Feedback from './components/Feedback';
 import ThemeSelector, { themes } from './components/ThemeSelector';
 import { Doc, User } from './types';
 import { logActivity, setCurrentUserSession } from './services/activityService';
-
-const GriotChat = React.lazy(() => import('./components/GriotChat'));
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -113,16 +112,8 @@ const App: React.FC = () => {
         return <Documents docs={docs} setDocs={setDocs} />;
       case 'help':
         return <Help />;
-      case 'chat':
-          return (
-            <Suspense fallback={
-                <div className="flex justify-center items-center h-full">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-primary"></div>
-                </div>
-            }>
-                <GriotChat />
-            </Suspense>
-          );
+      case 'feedback':
+        return <Feedback />;
       default:
         return <Dashboard onNavigate={handleNavigate} />;
     }

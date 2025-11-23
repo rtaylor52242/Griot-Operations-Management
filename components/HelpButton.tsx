@@ -103,13 +103,6 @@ const HelpButton: React.FC<HelpButtonProps> = ({ currentView = 'dashboard' }) =>
                 3. **Actions**:
                    - **View**: Clicking the Eye icon to preview or download a file.
                    - **Delete**: Clicking the Trash icon to permanently remove a file.`;
-            case 'chat':
-                return `The user is using the **Ask a Griot** AI assistant.
-                Explain how to use this feature.
-                Cover:
-                1. **Chat Interface**: Typing questions into the input field and sending them.
-                2. **Capabilities**: Explain that the Griot bot can answer questions about operations, best practices, or help navigate the app.
-                3. **History**: How the chat keeps a history of the current conversation.`;
             default:
                 return `The user is looking for a general **App Overview**.
                 Provide a high-level guide to the Griot Operations Management system.

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
@@ -166,6 +165,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         >
                             <span className="block text-lg font-semibold text-gray-800 group-hover:text-brand-primary">Log Donation</span>
                             <span className="text-sm text-gray-500">Record a new gift</span>
+                        </button>
+                        <button 
+                            onClick={() => onNavigate?.('fundraising', 'add')}
+                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors group"
+                        >
+                            <span className="block text-lg font-semibold text-gray-800 group-hover:text-brand-primary">Create Fundraiser</span>
+                            <span className="text-sm text-gray-500">Launch new campaign</span>
                         </button>
                         <button 
                             onClick={() => onNavigate?.('reports')}

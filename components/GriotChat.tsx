@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Header from './Header';
 import { PaperAirplaneIcon, ChatIcon } from './icons';
+import { GoogleGenAI } from '@google/genai';
 
 interface Message {
     id: string;
@@ -46,9 +47,7 @@ const GriotChat: React.FC = () => {
             if (!apiKey) {
                 throw new Error("API Key not found. Please check your environment configuration.");
             }
-
-            // Dynamic import to prevent load-time crashes if CDN is flaky
-            const { GoogleGenAI } = await import('@google/genai');
+            
             const ai = new GoogleGenAI({ apiKey });
             
             // Filter out the initial greeting from history to prevent confusion for the model
@@ -79,12 +78,7 @@ const GriotChat: React.FC = () => {
         } catch (err) {
             console.error("Error sending message:", err);
             if (err instanceof Error) {
-                // Check for module loading errors specifically
-                if (err.message.includes('Failed to fetch')) {
-                     setError("Failed to connect to the AI service. Please check your internet connection or try again later.");
-                } else {
-                     setError(`Error: ${err.message}`);
-                }
+                 setError(`Error: ${err.message}`);
             } else {
                 setError("Sorry, I encountered an unexpected error. Please try again.");
             }

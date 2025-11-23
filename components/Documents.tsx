@@ -1,8 +1,8 @@
-
 import React, { useRef, useState, useMemo } from 'react';
 import Header from './Header';
 import { CloudUploadIcon, TrashIcon, EyeIcon, DocumentTextIcon, SearchIcon } from './icons';
 import { Doc } from '../types';
+import { logActivity } from '../services/activityService';
 
 interface DocumentsProps {
     docs: Doc[];
@@ -37,13 +37,20 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
                 url: URL.createObjectURL(file)
             }));
             setDocs([...newDocs, ...docs]);
+            logActivity('Document Uploaded', `Uploaded ${files.length} file(s)`, 'system');
         }
         // Reset input
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleDelete = (id: string) => {
-        setDocs(docs.filter(d => d.id !== id));
+        if(window.confirm("Are you sure you want to delete this document?")) {
+            const doc = docs.find(d => d.id === id);
+            setDocs(docs.filter(d => d.id !== id));
+            if (doc) {
+                logActivity('Document Deleted', `Deleted document: ${doc.name}`, 'system');
+            }
+        }
     };
 
     const handleView = (doc: Doc) => {
@@ -185,7 +192,11 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
                                     <button onClick={() => handleView(doc)} className="text-brand-primary hover:text-brand-secondary mr-4" title="View">
                                         <EyeIcon className="w-6 h-6" />
                                     </button>
-                                    <button onClick={() => handleDelete(doc.id)} className="text-red-600 hover:text-red-900" title="Delete">
+                                    <button 
+                                        onClick={(e) => { e.preventDefault(); handleDelete(doc.id); }}
+                                        className="text-red-600 hover:text-red-900" 
+                                        title="Delete"
+                                    >
                                         <TrashIcon className="w-6 h-6" />
                                     </button>
                                 </td>

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { HomeIcon, UsersIcon, FundraisingIcon, TicketIcon, ChartBarIcon, CogIcon, LogoutIcon, DocumentIcon, QuestionMarkCircleIcon, ChatIcon } from './icons';
+import { HomeIcon, UsersIcon, FundraisingIcon, TicketIcon, ChartBarIcon, CogIcon, LogoutIcon, DocumentIcon, QuestionMarkCircleIcon, MessageIcon } from './icons';
 
 interface SidebarProps {
     currentView: string;
@@ -16,7 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onSignOut })
     { id: 'ticketing', icon: TicketIcon, label: 'Ticketing' },
     { id: 'reports', icon: ChartBarIcon, label: 'Reports' },
     { id: 'documents', icon: DocumentIcon, label: 'Documents' },
-    { id: 'chat', icon: ChatIcon, label: 'Ask a Griot' },
+    { id: 'feedback', icon: MessageIcon, label: 'Feedback' },
     { id: 'help', icon: QuestionMarkCircleIcon, label: 'Help' },
   ];
 

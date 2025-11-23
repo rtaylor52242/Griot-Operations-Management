@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
@@ -163,8 +162,8 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
             let bValue: any = b[sortKey as keyof Campaign];
 
             if (sortKey === 'progress') {
-                aValue = a.raised / a.goal;
-                bValue = b.raised / b.goal;
+                aValue = a.raised / (a.goal || 1);
+                bValue = b.raised / (b.goal || 1);
             }
 
             if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -206,8 +205,9 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
 
     // Calculate Statistics
     const totalRaised = campaigns.reduce((acc, c) => acc + c.raised, 0);
-    const totalDonors = campaigns.reduce((acc, c) => acc + c.donors, 0);
-    const avgDonation = totalDonors > 0 ? totalRaised / totalDonors : 0;
+    // Calculate unique donors from the actual donations log
+    const uniqueDonors = new Set(donations.map(d => d.donorName.toLowerCase().trim())).size;
+    const avgDonation = uniqueDonors > 0 ? totalRaised / uniqueDonors : 0;
 
     return (
         <div>
@@ -228,7 +228,7 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <StatCard title="Total Raised (YTD)" value={`$${totalRaised.toLocaleString()}`} icon={FundraisingIcon} />
-                        <StatCard title="Total Donors (YTD)" value={totalDonors.toLocaleString()} icon={UsersIcon} />
+                        <StatCard title="Total Donors (YTD)" value={uniqueDonors.toLocaleString()} icon={UsersIcon} />
                         <StatCard title="Avg. Donation" value={`$${Math.round(avgDonation).toLocaleString()}`} icon={TrendingUpIcon} />
                     </div>
 

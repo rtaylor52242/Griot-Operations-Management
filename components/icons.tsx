@@ -19,7 +19,7 @@ export const UsersIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
 
 export const FundraisingIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01V5M12 20v-1m0 1v.01M12 18v-1m0-1v-1m0-1v-1m0-1V6m6 10a6 6 0 11-12 0 6 6 0 0112 0zm-6-4h.01" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 6v-1m0-1V4m0 2.01V5M12 20v-1m0 1v.01M12 18v-1m0-1v-1m0-1V6m6 10a6 6 0 11-12 0 6 6 0 0112 0zm-6-4h.01" />
     </svg>
 );
 
@@ -166,5 +166,17 @@ export const SunIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
 export const MoonIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+);
+
+export const MessageIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+    </svg>
+);
+
+export const PlusIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
     </svg>
 );

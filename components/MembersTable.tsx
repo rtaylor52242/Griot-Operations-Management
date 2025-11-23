@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, MembershipTier, MemberStatus, MemberRole } from '../types';
 import { SearchIcon } from './icons';
@@ -29,6 +28,10 @@ type SortDirection = 'asc' | 'desc';
 interface TablePreferences {
     searchTerm: string;
     statusFilter: string;
+    tierFilter: string;
+    roleFilter: string;
+    startDate: string;
+    endDate: string;
     sortKey: SortKey;
     sortDirection: SortDirection;
 }
@@ -49,6 +52,10 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
         return {
             searchTerm: '',
             statusFilter: 'All',
+            tierFilter: 'All',
+            roleFilter: 'All',
+            startDate: '',
+            endDate: '',
             sortKey: 'joinDate',
             sortDirection: 'desc'
         };
@@ -77,8 +84,22 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
         let result = members.filter(member => {
             const matchesSearch = `${member.firstName} ${member.lastName}`.toLowerCase().includes(preferences.searchTerm.toLowerCase()) ||
                                   member.email.toLowerCase().includes(preferences.searchTerm.toLowerCase());
+            
             const matchesStatus = preferences.statusFilter === 'All' || member.status === preferences.statusFilter;
-            return matchesSearch && matchesStatus;
+            
+            const matchesTier = preferences.tierFilter === 'All' || member.tierId === preferences.tierFilter;
+            
+            const matchesRole = preferences.roleFilter === 'All' || member.role === preferences.roleFilter;
+
+            let matchesDate = true;
+            if (preferences.startDate) {
+                matchesDate = matchesDate && new Date(member.joinDate) >= new Date(preferences.startDate);
+            }
+            if (preferences.endDate) {
+                matchesDate = matchesDate && new Date(member.joinDate) <= new Date(preferences.endDate);
+            }
+
+            return matchesSearch && matchesStatus && matchesTier && matchesRole && matchesDate;
         });
 
         return result.sort((a, b) => {
@@ -138,32 +159,88 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
 
     return (
         <div>
-            <div className="mb-4 flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-grow">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <SearchIcon className="h-5 w-5 text-gray-400" />
+            <div className="mb-4 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="relative flex-grow">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <SearchIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search members by name or email..."
+                            value={preferences.searchTerm}
+                            onChange={(e) => setPreferences(prev => ({ ...prev, searchTerm: e.target.value }))}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                        />
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Search members by name or email..."
-                        value={preferences.searchTerm}
-                        onChange={(e) => setPreferences(prev => ({ ...prev, searchTerm: e.target.value }))}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                    />
                 </div>
-                <div className="w-full sm:w-48">
-                    <select
-                        value={preferences.statusFilter}
-                        onChange={(e) => setPreferences(prev => ({ ...prev, statusFilter: e.target.value }))}
-                        className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
-                    >
-                        <option value="All">All Statuses</option>
-                        {Object.values(MemberStatus).map(status => (
-                            <option key={status} value={status}>{status}</option>
-                        ))}
-                    </select>
+                
+                {/* Filters Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                            value={preferences.statusFilter}
+                            onChange={(e) => setPreferences(prev => ({ ...prev, statusFilter: e.target.value }))}
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                        >
+                            <option value="All">All Statuses</option>
+                            {Object.values(MemberStatus).map(status => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Membership Tier</label>
+                        <select
+                            value={preferences.tierFilter}
+                            onChange={(e) => setPreferences(prev => ({ ...prev, tierFilter: e.target.value }))}
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                        >
+                            <option value="All">All Tiers</option>
+                            {tiers.map(tier => (
+                                <option key={tier.id} value={tier.id}>{tier.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                        <select
+                            value={preferences.roleFilter}
+                            onChange={(e) => setPreferences(prev => ({ ...prev, roleFilter: e.target.value }))}
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                        >
+                            <option value="All">All Roles</option>
+                            {Object.values(MemberRole).map(role => (
+                                <option key={role} value={role}>{role}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Joined After</label>
+                        <input
+                            type="date"
+                            value={preferences.startDate}
+                            onChange={(e) => setPreferences(prev => ({ ...prev, startDate: e.target.value }))}
+                            className="block w-full pl-3 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Joined Before</label>
+                        <input
+                            type="date"
+                            value={preferences.endDate}
+                            onChange={(e) => setPreferences(prev => ({ ...prev, endDate: e.target.value }))}
+                            className="block w-full pl-3 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                        />
+                    </div>
                 </div>
             </div>
+
             <div className="overflow-x-auto border rounded-lg border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">

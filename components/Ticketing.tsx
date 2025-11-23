@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
@@ -7,6 +6,7 @@ import ManageEvent from './ManageEvent';
 import { TicketIcon, CalendarIcon, CurrencyDollarIcon } from './icons';
 import { TicketEvent } from '../types';
 import { getEvents, updateEventService, deleteEventService } from '../services/ticketingService';
+import { logActivity } from '../services/activityService';
 
 interface TicketingProps {
     initialView?: string;
@@ -44,8 +44,12 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
 
     const handleDeleteEvent = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+            const eventToDelete = events.find(e => e.id === id);
             await deleteEventService(id);
             setEvents(prev => prev.filter(e => e.id !== id));
+            if (eventToDelete) {
+                logActivity('Event Deleted', `Deleted event: ${eventToDelete.title}`, 'ticketing');
+            }
             return true;
         }
         return false;
@@ -57,8 +61,18 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
              ...updatedEvent,
              price: updatedEvent.price || 20 // Default if missing
         };
+        
+        const isNew = !events.find(e => e.id === fullEvent.id);
         await updateEventService(fullEvent);
-        setEvents(events.map(e => e.id === fullEvent.id ? fullEvent : e));
+        
+        if (isNew) {
+            setEvents([...events, fullEvent]);
+            logActivity('Event Created', `Created new event: ${fullEvent.title}`, 'ticketing');
+        } else {
+            setEvents(events.map(e => e.id === fullEvent.id ? fullEvent : e));
+            logActivity('Event Updated', `Updated event details: ${fullEvent.title}`, 'ticketing');
+        }
+        
         setView('overview');
         setSelectedEvent(null);
     };
@@ -80,7 +94,16 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
                     </div>
 
                     <div className="mb-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Current & Upcoming Events</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800">Current & Upcoming Events</h2>
+                            <button 
+                                onClick={() => { setSelectedEvent(null); setView('manage'); }}
+                                className="text-sm text-brand-primary hover:text-brand-secondary font-medium"
+                            >
+                                + Add New Event
+                            </button>
+                        </div>
+                        
                         {loading ? (
                             <p className="text-gray-500">Loading events...</p>
                         ) : (
