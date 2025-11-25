@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
@@ -43,16 +44,13 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
     };
 
     const handleDeleteEvent = async (id: number) => {
-        if (window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-            const eventToDelete = events.find(e => e.id === id);
-            await deleteEventService(id);
-            setEvents(prev => prev.filter(e => e.id !== id));
-            if (eventToDelete) {
-                logActivity('Event Deleted', `Deleted event: ${eventToDelete.title}`, 'ticketing');
-            }
-            return true;
+        const eventToDelete = events.find(e => e.id === id);
+        await deleteEventService(id);
+        setEvents(prev => prev.filter(e => e.id !== id));
+        if (eventToDelete) {
+            logActivity('Event Deleted', `Deleted event: ${eventToDelete.title}`, 'ticketing');
         }
-        return false;
+        return true;
     };
 
     const handleSaveEvent = async (updatedEvent: any) => {

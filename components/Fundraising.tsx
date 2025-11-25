@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
@@ -103,10 +104,6 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     };
 
     const handleDeleteCampaign = async (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-            return;
-        }
-        
         const campaign = campaigns.find(c => c.id === id);
 
         // Optimistic update

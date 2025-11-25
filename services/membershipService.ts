@@ -94,3 +94,7 @@ export const addTierService = async (tier: MembershipTier): Promise<void> => {
 export const updateTierService = async (tier: MembershipTier): Promise<void> => {
     tiers = tiers.map(t => t.id === tier.id ? tier : t);
 };
+
+export const deleteTierService = async (tierId: string): Promise<void> => {
+    tiers = tiers.filter(t => t.id !== tierId);
+};

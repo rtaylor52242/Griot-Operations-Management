@@ -6,9 +6,10 @@ import { CheckCircleIcon } from './icons';
 interface TierListProps {
     tiers: MembershipTier[];
     onEdit: (tier: MembershipTier) => void;
+    onDelete: (tierId: string) => void;
 }
 
-const TierList: React.FC<TierListProps> = ({ tiers, onEdit }) => {
+const TierList: React.FC<TierListProps> = ({ tiers, onEdit, onDelete }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
             {tiers.map((tier) => (
@@ -33,12 +34,23 @@ const TierList: React.FC<TierListProps> = ({ tiers, onEdit }) => {
                         ))}
                     </ul>
 
-                    <button 
-                        onClick={() => onEdit(tier)}
-                        className="w-full mt-auto px-4 py-2 text-sm font-medium text-brand-primary bg-indigo-100 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors"
-                    >
-                        Edit Tier
-                    </button>
+                    <div className="mt-auto space-y-2">
+                        <button 
+                            onClick={() => onEdit(tier)}
+                            className="w-full px-4 py-2 text-sm font-medium text-brand-primary bg-indigo-100 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors"
+                        >
+                            Edit Tier
+                        </button>
+                        <button 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                onDelete(tier.id);
+                            }}
+                            className="w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                        >
+                            Delete Tier
+                        </button>
+                    </div>
                 </div>
             ))}
         </div>

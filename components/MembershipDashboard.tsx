@@ -16,7 +16,8 @@ import {
     updateMemberService, 
     deleteMemberService, 
     addTierService, 
-    updateTierService 
+    updateTierService,
+    deleteTierService
 } from '../services/membershipService';
 import { logActivity } from '../services/activityService';
 import { Member, MembershipTier, MemberStatus, MemberRole } from '../types';
@@ -95,13 +96,11 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
     };
 
     const handleDeleteMember = async (memberId: string) => {
-        if (window.confirm('Are you sure you want to delete this member? This action cannot be undone.')) {
-            const member = members.find(m => m.id === memberId);
-            await deleteMemberService(memberId);
-            setMembers(prev => prev.filter(m => m.id !== memberId));
-            if (member) {
-                logActivity('Member Deleted', `Deleted member ${member.firstName} ${member.lastName}`, 'membership');
-            }
+        const member = members.find(m => m.id === memberId);
+        await deleteMemberService(memberId);
+        setMembers(prev => prev.filter(m => m.id !== memberId));
+        if (member) {
+            logActivity('Member Deleted', `Deleted member ${member.firstName} ${member.lastName}`, 'membership');
         }
     };
 
@@ -111,6 +110,15 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
         logActivity('Tier Updated', `Updated tier: ${updatedTier.name}`, 'membership');
         setView('tiers');
         setSelectedTier(null);
+    };
+
+    const handleDeleteTier = async (tierId: string) => {
+        const tier = tiers.find(t => t.id === tierId);
+        await deleteTierService(tierId);
+        setTiers(prev => prev.filter(t => t.id !== tierId));
+        if (tier) {
+            logActivity('Tier Deleted', `Deleted tier: ${tier.name}`, 'membership');
+        }
     };
 
     const openEditMember = (member: Member) => {
@@ -208,7 +216,7 @@ const MembershipDashboard: React.FC<MembershipDashboardProps> = ({ initialView }
                         ) : view === 'members' ? (
                             <MembersTable members={members} tiers={tiers} onEdit={openEditMember} onDelete={handleDeleteMember} />
                         ) : (
-                            <TierList tiers={tiers} onEdit={openEditTier} />
+                            <TierList tiers={tiers} onEdit={openEditTier} onDelete={handleDeleteTier} />
                         )}
                     </div>
                 </div>

@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useMemo } from 'react';
 import Header from './Header';
 import { CloudUploadIcon, TrashIcon, EyeIcon, DocumentTextIcon, SearchIcon } from './icons';
@@ -44,12 +45,10 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
     };
 
     const handleDelete = (id: string) => {
-        if(window.confirm("Are you sure you want to delete this document?")) {
-            const doc = docs.find(d => d.id === id);
-            setDocs(docs.filter(d => d.id !== id));
-            if (doc) {
-                logActivity('Document Deleted', `Deleted document: ${doc.name}`, 'system');
-            }
+        const doc = docs.find(d => d.id === id);
+        setDocs(docs.filter(d => d.id !== id));
+        if (doc) {
+            logActivity('Document Deleted', `Deleted document: ${doc.name}`, 'system');
         }
     };
 
