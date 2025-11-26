@@ -1,5 +1,6 @@
 
 import { Campaign, Donation } from '../types';
+import { addAction } from './historyService';
 
 let campaigns: Campaign[] = [
     { id: 1, name: 'Annual Fund 2024', goal: 500000, raised: 325000, donors: 1240, status: 'Active', description: 'Supporting general operations and community outreach.' },
@@ -25,32 +26,55 @@ export const getDonations = async (): Promise<Donation[]> => {
     return new Promise(resolve => setTimeout(() => resolve([...donations]), 300));
 };
 
-export const addCampaignService = async (campaign: Campaign): Promise<void> => {
+export const addCampaignService = async (campaign: Campaign, addToHistory = true): Promise<void> => {
     campaigns = [campaign, ...campaigns];
+    if (addToHistory) {
+        addAction({
+            name: 'Add Campaign',
+            undo: () => deleteCampaignService(campaign.id, false),
+            redo: () => addCampaignService(campaign, false)
+        });
+    }
 };
 
-export const updateCampaignService = async (campaign: Campaign): Promise<void> => {
+export const updateCampaignService = async (campaign: Campaign, addToHistory = true): Promise<void> => {
+    const oldCampaign = campaigns.find(c => c.id === campaign.id);
     campaigns = campaigns.map(c => c.id === campaign.id ? campaign : c);
+    if (addToHistory && oldCampaign) {
+        addAction({
+            name: 'Update Campaign',
+            undo: () => updateCampaignService(oldCampaign, false),
+            redo: () => updateCampaignService(campaign, false)
+        });
+    }
 };
 
-export const deleteCampaignService = async (id: number): Promise<void> => {
+export const deleteCampaignService = async (id: number, addToHistory = true): Promise<void> => {
+    const campaignToDelete = campaigns.find(c => c.id === id);
     campaigns = campaigns.filter(c => c.id !== id);
+    if (addToHistory && campaignToDelete) {
+        addAction({
+            name: 'Delete Campaign',
+            undo: () => addCampaignService(campaignToDelete, false),
+            redo: () => deleteCampaignService(id, false)
+        });
+    }
 };
 
-export const logDonationService = async (amount: number, campaignId: number, donorName: string, paymentMethod: string, notes?: string, date?: string): Promise<void> => {
+export const logDonationService = async (amount: number, campaignId: number, donorName: string, paymentMethod: string, notes?: string, date?: string, addToHistory = true): Promise<void> => {
     const campaign = campaigns.find(c => c.id === campaignId);
     if (campaign) {
         // Update campaign stats
-        campaigns = campaigns.map(c => {
-            if (c.id === campaignId) {
-                return {
-                    ...c,
-                    raised: c.raised + amount,
-                    donors: c.donors + 1
-                };
-            }
-            return c;
-        });
+        const oldCampaign = { ...campaign };
+        const newCampaign = {
+            ...campaign,
+            raised: campaign.raised + amount,
+            donors: campaign.donors + 1
+        };
+        
+        // We update the campaign array implicitly here, but for undo/redo of just the donation log, 
+        // we need to handle the campaign stats reversion too.
+        campaigns = campaigns.map(c => c.id === campaignId ? newCampaign : c);
 
         // Log individual donation
         const newDonation: Donation = {
@@ -64,5 +88,18 @@ export const logDonationService = async (amount: number, campaignId: number, don
             notes
         };
         donations = [newDonation, ...donations];
+
+        if (addToHistory) {
+            addAction({
+                name: 'Log Donation',
+                undo: () => {
+                    // Revert donation list
+                    donations = donations.filter(d => d.id !== newDonation.id);
+                    // Revert campaign stats
+                    campaigns = campaigns.map(c => c.id === campaignId ? oldCampaign : c);
+                },
+                redo: () => logDonationService(amount, campaignId, donorName, paymentMethod, notes, date, false)
+            });
+        }
     }
 };

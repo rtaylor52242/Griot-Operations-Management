@@ -70,6 +70,12 @@ export interface Donation {
     notes?: string;
 }
 
+export interface TicketTypePrice {
+    id: string;
+    name: string;
+    price: number;
+}
+
 export interface TicketEvent {
     id: number;
     title: string;
@@ -77,7 +83,8 @@ export interface TicketEvent {
     sold: number;
     capacity: number | string; // 'Unlimited' or number
     status: string;
-    price: number; // Average price for revenue calculation
+    price: number; // Average or Base price for simple revenue calculation
+    ticketPricing?: TicketTypePrice[];
 }
 
 export interface User {

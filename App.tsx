@@ -15,6 +15,7 @@ import Feedback from './components/Feedback';
 import ThemeSelector, { themes } from './components/ThemeSelector';
 import { Doc, User } from './types';
 import { logActivity, setCurrentUserSession } from './services/activityService';
+import { undo, redo, addAction } from './services/historyService';
 
 // Lazy load Chat to isolate heavy dependencies
 const GriotChat = React.lazy(() => import('./components/GriotChat'));
@@ -30,11 +31,8 @@ const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Lifted state for Documents to persist across navigation
-  const [docs, setDocs] = useState<Doc[]>([
-      { id: '1', name: 'Membership_Guidelines_2024.pdf', type: 'application/pdf', size: '2.4 MB', date: '2024-10-01', url: '#' },
-      { id: '2', name: 'Exhibit_Layout_Plan_v2.jpg', type: 'image/jpeg', size: '4.1 MB', date: '2024-10-15', url: '#' },
-      { id: '3', name: 'Fundraising_Deck_Q4.pptx', type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', size: '8.5 MB', date: '2024-10-20', url: '#' },
-  ]);
+  // Removed mock files as requested
+  const [docs, setDocs] = useState<Doc[]>([]);
 
   // Apply Theme Effect
   useEffect(() => {
@@ -76,6 +74,21 @@ const App: React.FC = () => {
 
   }, [currentTheme, isDarkMode]);
 
+  // Keyboard shortcuts for Undo/Redo
+  useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+              e.preventDefault();
+              undo();
+          } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+              e.preventDefault();
+              redo();
+          }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useEffect(() => {
       setCurrentUserSession(currentUser || { username: 'guest', name: 'Guest User', role: 'Guest' });
   }, [currentUser]);
@@ -99,6 +112,62 @@ const App: React.FC = () => {
     setCurrentView('dashboard');
   };
 
+  // Wrap setDocs to include history
+  const handleSetDocs = (newDocsOrUpdater: Doc[] | ((prev: Doc[]) => Doc[])) => {
+      setDocs(prev => {
+          const newDocs = typeof newDocsOrUpdater === 'function' ? newDocsOrUpdater(prev) : newDocsOrUpdater;
+          
+          // Determine action type roughly by length comparison
+          // This is a simplification; ideal way is to have explicit addDoc/removeDoc methods
+          let actionName = 'Update Documents';
+          let isAdd = newDocs.length > prev.length;
+          
+          if (newDocs.length !== prev.length) {
+              actionName = isAdd ? 'Upload Document' : 'Delete Document';
+              // Only add to history if we can infer the change clearly or if it's not an initial load
+              // For now, we rely on the specific handlers in Documents.tsx to be more precise if possible,
+              // but passing the raw setter makes it hard. 
+              // Strategy: The Documents component will handle calling the setter, 
+              // but we can intercept the logical "Add/Remove" there if we passed methods instead of setter.
+              // However, to keep changes minimal to props interface:
+              
+              // We will rely on the component to manage history for add/delete, 
+              // OR we implement a custom history wrapper here. 
+              // Let's modify Documents.tsx to interact with historyService directly or via callbacks? 
+              // Simpler: Let Documents.tsx use `setDocs` but we expose a way to register history.
+          }
+          return newDocs;
+      });
+  };
+
+  // Explicit methods for history-aware document changes to pass to child
+  const addDocWithHistory = (doc: Doc) => {
+      setDocs(prev => [doc, ...prev]);
+      addAction({
+          name: 'Upload Document',
+          undo: () => setDocs(prev => prev.filter(d => d.id !== doc.id)),
+          redo: () => setDocs(prev => [doc, ...prev])
+      });
+  };
+
+  const deleteDocWithHistory = (id: string) => {
+      let deletedDoc: Doc | undefined;
+      setDocs(prev => {
+          deletedDoc = prev.find(d => d.id === id);
+          return prev.filter(d => d.id !== id);
+      });
+      
+      if (deletedDoc) {
+          // Capture the doc in closure
+          const doc = deletedDoc; 
+          addAction({
+              name: 'Delete Document',
+              undo: () => setDocs(prev => [doc, ...prev]),
+              redo: () => setDocs(prev => prev.filter(d => d.id !== id))
+          });
+      }
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -116,7 +185,12 @@ const App: React.FC = () => {
       case 'activity':
         return <ActivityLog />;
       case 'documents':
-        return <Documents docs={docs} setDocs={setDocs} />;
+        // Pass history-aware wrappers instead of raw state setter where possible
+        // But the prop expects `setDocs`. We'll override the behavior in Documents.tsx
+        // by passing these as extra props or handling it there. 
+        // To minimize breaking changes, we'll pass a modified setDocs-like object or extend the component.
+        // Easier: Update Documents.tsx to accept `onAdd` and `onDelete` optional props.
+        return <Documents docs={docs} setDocs={setDocs} onAdd={addDocWithHistory} onDelete={deleteDocWithHistory} />;
       case 'chat':
         return (
             <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-primary"></div></div>}>
@@ -138,11 +212,11 @@ const App: React.FC = () => {
 
   return (
     <>
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex h-screen bg-gray-100 print:h-auto print:block">
         <Sidebar currentView={currentView} onNavigate={(view) => handleNavigate(view)} onSignOut={handleSignOut} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-            <div className="container mx-auto px-6 py-8">
+        <div className="flex-1 flex flex-col overflow-hidden print:overflow-visible print:h-auto print:block">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 print:overflow-visible print:h-auto print:block print:bg-white">
+            <div className="container mx-auto px-6 py-8 print:p-0 print:w-full print:max-w-none">
               {renderContent()}
             </div>
           </main>

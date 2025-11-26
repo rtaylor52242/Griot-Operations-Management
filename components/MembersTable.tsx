@@ -220,7 +220,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Joined After</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Joined on or After</label>
                         <input
                             type="date"
                             value={preferences.startDate}
@@ -230,7 +230,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, tiers, onEdit, onD
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Joined Before</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Joined on or Before</label>
                         <input
                             type="date"
                             value={preferences.endDate}

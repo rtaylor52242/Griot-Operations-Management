@@ -1,24 +1,31 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { logActivity } from '../services/activityService';
+import { TicketEvent, TicketTypePrice } from '../types';
+import { ArrowLeftIcon } from './icons';
 
 interface SellTicketsProps {
+    events: TicketEvent[];
     onCancel: () => void;
     onComplete: () => void;
 }
 
-const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
+const SellTickets: React.FC<SellTicketsProps> = ({ events, onCancel, onComplete }) => {
+    const [selectedEventId, setSelectedEventId] = useState<number>(events.length > 0 ? events[0].id : 0);
     const [cart, setCart] = useState<{ id: string; name: string; price: number; quantity: number }[]>([]);
 
-    const ticketTypes = [
-        { id: 'adult', name: 'General Admission (Adult)', price: 25 },
-        { id: 'senior', name: 'Senior (65+)', price: 20 },
-        { id: 'child', name: 'Child (3-12)', price: 15 },
-        { id: 'student', name: 'Student', price: 18 },
-        { id: 'member', name: 'Member Guest', price: 12 },
+    const currentEvent = events.find(e => e.id === selectedEventId);
+    
+    const ticketTypes: TicketTypePrice[] = currentEvent?.ticketPricing || [
+        { id: 'adult', name: 'General Admission', price: 25 }
     ];
 
-    const addToCart = (type: typeof ticketTypes[0]) => {
+    // Reset cart when event changes
+    useEffect(() => {
+        setCart([]);
+    }, [selectedEventId]);
+
+    const addToCart = (type: TicketTypePrice) => {
         setCart(prev => {
             const existing = prev.find(item => item.id === type.id);
             if (existing) {
@@ -40,7 +47,7 @@ const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
     const handleCheckout = () => {
         const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
         const totalValue = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const description = `${totalItems} tickets sold (Revenue: $${totalValue.toFixed(2)})`;
+        const description = `${totalItems} tickets sold for "${currentEvent?.title}" (Revenue: $${totalValue.toFixed(2)})`;
         
         logActivity('Ticket Sale', description, 'ticketing');
         onComplete();
@@ -51,8 +58,31 @@ const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
     return (
         <div className="bg-white rounded-lg shadow-lg h-[600px] flex flex-col md:flex-row overflow-hidden">
             {/* Product Selection */}
-            <div className="w-full md:w-2/3 p-6 bg-gray-50 overflow-y-auto">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Select Tickets</h2>
+            <div className="w-full md:w-2/3 p-6 bg-gray-50 overflow-y-auto flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center">
+                        <button 
+                            onClick={onCancel}
+                            className="mr-4 p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors"
+                            title="Back to Ticketing"
+                        >
+                            <ArrowLeftIcon className="w-6 h-6" />
+                        </button>
+                        <h2 className="text-2xl font-bold text-gray-800">Sell Tickets</h2>
+                    </div>
+                    <div className="w-64">
+                        <select
+                            value={selectedEventId}
+                            onChange={(e) => setSelectedEventId(Number(e.target.value))}
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                        >
+                            {events.map(event => (
+                                <option key={event.id} value={event.id}>{event.title}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {ticketTypes.map((type) => (
                         <button
@@ -71,6 +101,7 @@ const SellTickets: React.FC<SellTicketsProps> = ({ onCancel, onComplete }) => {
             <div className="w-full md:w-1/3 bg-white border-l border-gray-200 flex flex-col">
                 <div className="p-6 border-b border-gray-200">
                     <h3 className="text-xl font-bold text-gray-800">Current Order</h3>
+                    <p className="text-sm text-gray-500">{currentEvent?.title}</p>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">

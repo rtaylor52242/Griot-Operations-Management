@@ -110,7 +110,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ currentTheme, onThemeSele
         <>
             <button
                 onClick={toggleOpen}
-                className="fixed bottom-6 right-6 bg-white text-gray-700 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transform hover:scale-110 transition-all duration-200 z-40 border border-gray-200"
+                className="fixed bottom-6 right-6 bg-white text-gray-700 w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transform hover:scale-110 transition-all duration-200 z-40 border border-gray-200 print:hidden"
                 aria-label="Change Theme"
                 title="Change Theme"
             >

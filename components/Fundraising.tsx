@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import Header from './Header';
 import StatCard from './StatCard';
@@ -37,11 +36,17 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     const [hiddenCampaignIds, setHiddenCampaignIds] = useState<number[]>([]);
     const [showHidden, setShowHidden] = useState(false);
 
-    // Sorting and Filtering State
+    // Sorting and Filtering State for Campaigns
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
-    const [sortKey, setSortKey] = useState<SortKey>('status'); // Default sort for campaigns
+    const [sortKey, setSortKey] = useState<SortKey>('status');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+    // Filtering State for Donation Log
+    const [donationPaymentFilter, setDonationPaymentFilter] = useState('All');
+    const [donationCampaignFilter, setDonationCampaignFilter] = useState('All');
+    const [donationStartDate, setDonationStartDate] = useState('');
+    const [donationEndDate, setDonationEndDate] = useState('');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -73,6 +78,7 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
         setCampaigns(prev => [newCampaign, ...prev]);
         logActivity('Campaign Created', `Launched new campaign: ${data.name}`, 'fundraising');
         setView('list');
+        setActiveTab('campaigns');
     };
 
     const handleLogDonation = async (data: { amount: number; campaignId: number; donorName: string; paymentMethod: string; date: string; notes?: string }) => {
@@ -85,6 +91,7 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
         
         logActivity('Donation Received', `$${data.amount} from ${data.donorName}`, 'fundraising');
         setView('list');
+        setActiveTab('donations');
     };
 
     const handleManageClick = (campaign: Campaign) => {
@@ -171,9 +178,25 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
 
     const filteredAndSortedDonations = useMemo(() => {
         let result = donations.filter(d => {
-             const matchesSearch = d.donorName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                   d.campaignName.toLowerCase().includes(searchTerm.toLowerCase());
-             return matchesSearch;
+             // Search Term matches Donor Name
+             const matchesSearch = d.donorName.toLowerCase().includes(searchTerm.toLowerCase());
+             
+             // Payment Method Filter
+             const matchesPayment = donationPaymentFilter === 'All' || d.paymentMethod === donationPaymentFilter;
+             
+             // Campaign Filter
+             const matchesCampaign = donationCampaignFilter === 'All' || d.campaignName === donationCampaignFilter;
+
+             // Date Range
+             let matchesDate = true;
+             if (donationStartDate) {
+                 matchesDate = matchesDate && new Date(d.date) >= new Date(donationStartDate);
+             }
+             if (donationEndDate) {
+                 matchesDate = matchesDate && new Date(d.date) <= new Date(donationEndDate);
+             }
+
+             return matchesSearch && matchesPayment && matchesCampaign && matchesDate;
         });
 
         return result.sort((a, b) => {
@@ -193,7 +216,7 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
             if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [donations, searchTerm, sortKey, sortDirection]);
+    }, [donations, searchTerm, sortKey, sortDirection, donationPaymentFilter, donationCampaignFilter, donationStartDate, donationEndDate]);
 
     const renderSortIcon = (key: SortKey) => {
         if (sortKey !== key) return <span className="ml-1 text-gray-400 opacity-0 group-hover:opacity-50">↕</span>;
@@ -205,6 +228,16 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
     // Calculate unique donors from the actual donations log
     const uniqueDonors = new Set(donations.map(d => d.donorName.toLowerCase().trim())).size;
     const avgDonation = uniqueDonors > 0 ? totalRaised / uniqueDonors : 0;
+
+    // Unique Payment Methods for dropdown
+    const uniquePaymentMethods = useMemo(() => {
+        return ['All', ...Array.from(new Set(donations.map(d => d.paymentMethod)))];
+    }, [donations]);
+
+    // Unique Campaign Names for dropdown
+    const uniqueCampaignNames = useMemo(() => {
+        return ['All', ...Array.from(new Set(campaigns.map(c => c.name)))];
+    }, [campaigns]);
 
     return (
         <div>
@@ -441,19 +474,66 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
                         </>
                     ) : (
                         <>
-                            {/* Donations Log View */}
-                            <div className="mb-6">
-                                <div className="relative max-w-lg">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <SearchIcon className="h-5 w-5 text-gray-400" />
+                            {/* Donations Log View with Filters */}
+                            <div className="mb-6 space-y-4">
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <div className="relative flex-grow">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <SearchIcon className="h-5 w-5 text-gray-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Search donor name..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                        />
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Search by donor or campaign..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                                    />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
+                                        <select
+                                            value={donationPaymentFilter}
+                                            onChange={(e) => setDonationPaymentFilter(e.target.value)}
+                                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                                        >
+                                            {uniquePaymentMethods.map(method => (
+                                                <option key={method} value={method}>{method}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Campaign</label>
+                                        <select
+                                            value={donationCampaignFilter}
+                                            onChange={(e) => setDonationCampaignFilter(e.target.value)}
+                                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                                        >
+                                            {uniqueCampaignNames.map(name => (
+                                                <option key={name} value={name}>{name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Date From</label>
+                                        <input
+                                            type="date"
+                                            value={donationStartDate}
+                                            onChange={(e) => setDonationStartDate(e.target.value)}
+                                            className="block w-full pl-3 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Date To</label>
+                                        <input
+                                            type="date"
+                                            value={donationEndDate}
+                                            onChange={(e) => setDonationEndDate(e.target.value)}
+                                            className="block w-full pl-3 pr-3 py-2 text-base border border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm rounded-md bg-white text-black"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -495,7 +575,7 @@ const Fundraising: React.FC<FundraisingProps> = ({ initialView }) => {
                                                 </tr>
                                             ) : filteredAndSortedDonations.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500">No donations found.</td>
+                                                    <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500">No donations found matching your filters.</td>
                                                 </tr>
                                             ) : (
                                                 filteredAndSortedDonations.map((donation) => (

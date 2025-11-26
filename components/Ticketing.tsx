@@ -53,22 +53,16 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
         return true;
     };
 
-    const handleSaveEvent = async (updatedEvent: any) => {
-        // Cast to TicketEvent as manage form might return partial
-        const fullEvent: TicketEvent = {
-             ...updatedEvent,
-             price: updatedEvent.price || 20 // Default if missing
-        };
-        
-        const isNew = !events.find(e => e.id === fullEvent.id);
-        await updateEventService(fullEvent);
+    const handleSaveEvent = async (updatedEvent: TicketEvent) => {
+        const isNew = !events.find(e => e.id === updatedEvent.id);
+        await updateEventService(updatedEvent);
         
         if (isNew) {
-            setEvents([...events, fullEvent]);
-            logActivity('Event Created', `Created new event: ${fullEvent.title}`, 'ticketing');
+            setEvents([...events, updatedEvent]);
+            logActivity('Event Created', `Created new event: ${updatedEvent.title}`, 'ticketing');
         } else {
-            setEvents(events.map(e => e.id === fullEvent.id ? fullEvent : e));
-            logActivity('Event Updated', `Updated event details: ${fullEvent.title}`, 'ticketing');
+            setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+            logActivity('Event Updated', `Updated event details: ${updatedEvent.title}`, 'ticketing');
         }
         
         setView('overview');
@@ -83,7 +77,18 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
         <div>
             {view === 'overview' && (
                 <>
-                    <Header title="Ticketing" buttonText="Sell Tickets" onButtonClick={handleSellClick} />
+                    <Header 
+                        title="Ticketing" 
+                        buttonText="Sell Tickets" 
+                        onButtonClick={handleSellClick}
+                    >
+                        <button 
+                            onClick={() => { setSelectedEvent(null); setView('manage'); }}
+                            className="px-4 py-2 bg-white text-brand-primary border border-brand-primary rounded-md hover:bg-gray-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary"
+                        >
+                            + Add New Event
+                        </button>
+                    </Header>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <StatCard title="Daily Tickets Sold" value={dailySold.toString()} icon={TicketIcon} />
@@ -94,12 +99,6 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
                     <div className="mb-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-semibold text-gray-800">Current & Upcoming Events</h2>
-                            <button 
-                                onClick={() => { setSelectedEvent(null); setView('manage'); }}
-                                className="text-sm text-brand-primary hover:text-brand-secondary font-medium"
-                            >
-                                + Add New Event
-                            </button>
                         </div>
                         
                         {loading ? (
@@ -151,8 +150,11 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
 
             {view === 'sell' && (
                 <>
-                    <Header title="Sell Tickets" />
-                    <SellTickets onCancel={() => setView('overview')} onComplete={() => setView('overview')} />
+                    <SellTickets 
+                        events={events}
+                        onCancel={() => setView('overview')} 
+                        onComplete={() => setView('overview')} 
+                    />
                 </>
             )}
 
@@ -160,7 +162,7 @@ const Ticketing: React.FC<TicketingProps> = ({ initialView }) => {
                 <>
                      <Header title="Manage Event" />
                      <ManageEvent 
-                        event={selectedEvent as any} 
+                        event={selectedEvent} 
                         onSave={handleSaveEvent} 
                         onDelete={(id) => {
                              if (handleDeleteEvent(id)) {

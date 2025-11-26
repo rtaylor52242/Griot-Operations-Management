@@ -8,12 +8,14 @@ import { logActivity } from '../services/activityService';
 interface DocumentsProps {
     docs: Doc[];
     setDocs: React.Dispatch<React.SetStateAction<Doc[]>>;
+    onAdd?: (doc: Doc) => void;
+    onDelete?: (id: string) => void;
 }
 
 type SortKey = 'name' | 'type' | 'size' | 'date';
 type SortDirection = 'asc' | 'desc';
 
-const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
+const Documents: React.FC<DocumentsProps> = ({ docs, setDocs, onAdd, onDelete }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sorting and Filtering State
@@ -37,7 +39,12 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
                 date: new Date().toISOString().split('T')[0],
                 url: URL.createObjectURL(file)
             }));
-            setDocs([...newDocs, ...docs]);
+            
+            if (onAdd) {
+                newDocs.forEach(doc => onAdd(doc));
+            } else {
+                setDocs([...newDocs, ...docs]);
+            }
             logActivity('Document Uploaded', `Uploaded ${files.length} file(s)`, 'system');
         }
         // Reset input
@@ -46,7 +53,11 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
 
     const handleDelete = (id: string) => {
         const doc = docs.find(d => d.id === id);
-        setDocs(docs.filter(d => d.id !== id));
+        if (onDelete) {
+            onDelete(id);
+        } else {
+            setDocs(docs.filter(d => d.id !== id));
+        }
         if (doc) {
             logActivity('Document Deleted', `Deleted document: ${doc.name}`, 'system');
         }
@@ -204,7 +215,7 @@ const Documents: React.FC<DocumentsProps> = ({ docs, setDocs }) => {
                         {filteredAndSortedDocs.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="px-6 py-10 text-center text-base text-gray-500">
-                                    No documents found matching your filters.
+                                    No documents found.
                                 </td>
                             </tr>
                         )}

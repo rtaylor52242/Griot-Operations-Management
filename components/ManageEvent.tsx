@@ -1,35 +1,45 @@
 
 import React, { useState, useEffect } from 'react';
-
-interface EventData {
-    id: number;
-    title: string;
-    date: string;
-    sold: number;
-    available: number | string;
-    status: string;
-}
+import { TicketEvent, TicketTypePrice } from '../types';
 
 interface ManageEventProps {
-    event: EventData | null;
-    onSave: (updatedEvent: EventData) => void;
+    event: TicketEvent | null;
+    onSave: (updatedEvent: TicketEvent) => void;
     onCancel: () => void;
     onDelete?: (id: number) => void;
 }
 
 const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel, onDelete }) => {
-    const [formData, setFormData] = useState<EventData>({
-        id: 0,
+    const [formData, setFormData] = useState<TicketEvent>({
+        id: Date.now(),
         title: '',
         date: '',
         sold: 0,
-        available: 0,
-        status: 'Open'
+        capacity: '',
+        status: 'Open',
+        price: 25,
+        ticketPricing: [
+            { id: 'adult', name: 'General Admission (Adult)', price: 25 },
+            { id: 'senior', name: 'Senior (65+)', price: 20 },
+            { id: 'child', name: 'Child (3-12)', price: 15 },
+            { id: 'student', name: 'Student', price: 18 },
+            { id: 'member', name: 'Member Guest', price: 12 },
+        ]
     });
 
     useEffect(() => {
         if (event) {
-            setFormData(event);
+            // Ensure ticketPricing exists
+            const pricing = event.ticketPricing || [
+                { id: 'adult', name: 'General Admission (Adult)', price: 25 },
+                { id: 'senior', name: 'Senior (65+)', price: 20 },
+                { id: 'child', name: 'Child (3-12)', price: 15 },
+                { id: 'student', name: 'Student', price: 18 },
+                { id: 'member', name: 'Member Guest', price: 12 },
+            ];
+            // Ensure date format is YYYY-MM-DD for date input if possible
+            // If existing date is text like "Daily", it won't show in date picker, which is acceptable
+            setFormData({ ...event, ticketPricing: pricing });
         }
     }, [event]);
 
@@ -37,8 +47,14 @@ const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel, onDe
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: name === 'sold' || name === 'price' ? Number(value) : value
         }));
+    };
+
+    const handlePriceChange = (index: number, value: string) => {
+        const newPricing = [...(formData.ticketPricing || [])];
+        newPricing[index] = { ...newPricing[index], price: Number(value) };
+        setFormData(prev => ({ ...prev, ticketPricing: newPricing }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -69,12 +85,11 @@ const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel, onDe
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Date</label>
                         <input
-                            type="text"
+                            type="date"
                             name="date"
                             value={formData.date}
                             onChange={handleChange}
                             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-brand-primary focus:border-brand-primary sm:text-sm bg-white text-black"
-                            placeholder="e.g., Oct 28, 2024 or Daily"
                             required
                         />
                     </div>
@@ -84,8 +99,8 @@ const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel, onDe
                             <label className="block text-sm font-medium text-gray-700">Capacity</label>
                             <input
                                 type="text"
-                                name="available"
-                                value={formData.available}
+                                name="capacity"
+                                value={formData.capacity}
                                 onChange={handleChange}
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-brand-primary focus:border-brand-primary sm:text-sm bg-white text-black"
                             />
@@ -115,6 +130,26 @@ const ManageEvent: React.FC<ManageEventProps> = ({ event, onSave, onCancel, onDe
                             <option value="Sold Out">Sold Out</option>
                             <option value="Closed">Closed</option>
                         </select>
+                    </div>
+
+                    <div className="border-t border-gray-200 pt-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Ticket Pricing</h3>
+                        <p className="text-sm text-gray-500 mb-4">Set price points for this event. Different events can have different pricing structures.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {formData.ticketPricing?.map((type, index) => (
+                                <div key={type.id}>
+                                    <label className="block text-sm font-medium text-gray-700">{type.name} ($)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={type.price}
+                                        onChange={(e) => handlePriceChange(index, e.target.value)}
+                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-brand-primary focus:border-brand-primary sm:text-sm bg-white text-black"
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 

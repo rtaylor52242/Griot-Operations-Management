@@ -1,5 +1,6 @@
 
 import { Member, MembershipTier, MembershipBenefit, MemberStatus, MemberRole } from '../types';
+import { addAction } from './historyService';
 
 const benefits: { [key: string]: MembershipBenefit } = {
   freeAdmission: { id: 'b1', name: 'Free General Admission', description: 'Unlimited free entry to all standard exhibits.' },
@@ -75,26 +76,72 @@ export const getTierById = (tierId: string): MembershipTier | undefined => {
 };
 
 // Mutations to persist changes during the session
-export const addMemberService = async (member: Member): Promise<void> => {
+export const addMemberService = async (member: Member, addToHistory = true): Promise<void> => {
     members = [member, ...members];
+    if (addToHistory) {
+        addAction({
+            name: 'Add Member',
+            undo: () => deleteMemberService(member.id, false),
+            redo: () => addMemberService(member, false)
+        });
+    }
 };
 
-export const updateMemberService = async (member: Member): Promise<void> => {
+export const updateMemberService = async (member: Member, addToHistory = true): Promise<void> => {
+    const oldMember = members.find(m => m.id === member.id);
     members = members.map(m => m.id === member.id ? member : m);
+    if (addToHistory && oldMember) {
+        addAction({
+            name: 'Update Member',
+            undo: () => updateMemberService(oldMember, false),
+            redo: () => updateMemberService(member, false)
+        });
+    }
 };
 
-export const deleteMemberService = async (memberId: string): Promise<void> => {
+export const deleteMemberService = async (memberId: string, addToHistory = true): Promise<void> => {
+    const memberToDelete = members.find(m => m.id === memberId);
     members = members.filter(m => m.id !== memberId);
+    if (addToHistory && memberToDelete) {
+        addAction({
+            name: 'Delete Member',
+            undo: () => addMemberService(memberToDelete, false),
+            redo: () => deleteMemberService(memberId, false)
+        });
+    }
 };
 
-export const addTierService = async (tier: MembershipTier): Promise<void> => {
+export const addTierService = async (tier: MembershipTier, addToHistory = true): Promise<void> => {
     tiers = [...tiers, tier];
+    if (addToHistory) {
+        addAction({
+            name: 'Add Tier',
+            undo: () => deleteTierService(tier.id, false),
+            redo: () => addTierService(tier, false)
+        });
+    }
 };
 
-export const updateTierService = async (tier: MembershipTier): Promise<void> => {
+export const updateTierService = async (tier: MembershipTier, addToHistory = true): Promise<void> => {
+    const oldTier = tiers.find(t => t.id === tier.id);
     tiers = tiers.map(t => t.id === tier.id ? tier : t);
+    if (addToHistory && oldTier) {
+        addAction({
+            name: 'Update Tier',
+            undo: () => updateTierService(oldTier, false),
+            redo: () => updateTierService(tier, false)
+        });
+    }
 };
 
-export const deleteTierService = async (tierId: string): Promise<void> => {
+export const deleteTierService = async (tierId: string, addToHistory = true): Promise<void> => {
+    const tierToDelete = tiers.find(t => t.id === tierId);
     tiers = tiers.filter(t => t.id !== tierId);
+    if (addToHistory && tierToDelete) {
+        addAction({
+            name: 'Delete Tier',
+            undo: () => addTierService(tierToDelete, false),
+            redo: () => deleteTierService(tierId, false)
+        });
+    }
 };
