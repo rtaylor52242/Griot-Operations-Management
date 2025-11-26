@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, MembershipTier, MemberStatus, MemberRole } from '../types';
 import { SearchIcon } from './icons';

@@ -143,7 +143,7 @@ const GriotChat: React.FC = () => {
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             placeholder="Type your question here..."
-                            className="flex-1 border border-gray-300 rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent bg-gray-50 text-black shadow-inner transition-all"
+                            className="flex-1 border border-gray-300 rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent bg-white text-black shadow-inner transition-all"
                             disabled={isLoading}
                         />
                         <button
